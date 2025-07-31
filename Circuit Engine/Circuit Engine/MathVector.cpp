@@ -100,3 +100,88 @@ double MVector::operator[](int index)
 {
 	return (this->values)[index];
 }
+
+Matrix::Matrix(int _rows, int _columns)
+{
+	rows = _rows;
+	cols = _columns;
+	data = new double* [rows];
+	for (int r = 0; r < rows; r++)
+	{
+		data[r] = new double[cols];
+		for (int c = 0; c < cols; c++)
+		{
+			data[r][c] = 0;
+		}
+	}
+}
+
+void Matrix::print()
+{
+	for (int r = 0; r < rows; r++)
+	{
+		for (int c = 0; c < cols; c++)
+		{
+			cout << data[r][c] << " ";
+		}
+		cout << endl;
+	}
+}
+
+void Matrix::map(vector<vector<double>> vec)
+{
+	for (int r = 0; r < vec.size(); r++)
+	{
+		for (int c = 0; c < vec[r].size(); c++)
+		{
+			insert(r, c, vec[r][c]);
+		}
+	}
+}
+
+double Matrix::get(int row, int col)
+{
+	if (row >= rows || col >= cols) { return 0; }
+	return data[row][col];
+}
+
+void Matrix::insert(int row, int col, double value)
+{
+	if (row >= rows || col >= cols) { return; }
+	data[row][col] = value;
+}
+
+void Matrix::linearRowOperation(int sourceRow, int targetRow, double scale)
+{
+	for (int c = 0; c < cols; c++)
+	{
+		data[targetRow][c] += data[sourceRow][c] * scale;
+	}
+}
+
+void Matrix::linearRowScale(int row, double scale)
+{
+	for (int c = 0; c < cols; c++)
+	{
+		data[row][c] *= scale;
+	}
+}
+
+Matrix* Matrix::RREF()
+{
+	Matrix* m = new Matrix(*this);
+	for (int c = 0; c < rows; c++) //go through columns bounded by number of rows
+	{
+		int sourceRow = c;
+		linearRowScale(sourceRow, 1.0 / get(sourceRow, c));
+
+		for (int r = 0; r < rows; r++)
+		{
+			if (r == sourceRow) { continue; }
+			
+			double scale = get(r, c);
+			m->linearRowOperation(sourceRow, r, -scale);
+		}
+	}
+	return m;
+}

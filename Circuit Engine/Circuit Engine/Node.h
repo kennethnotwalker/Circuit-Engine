@@ -2,27 +2,25 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_rect.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include "MathVector.h"
-#include "RenderObject.h"
 #include <vector>
 
 class Node;
 class Terminal;
 class Device;
 
-class Node : RenderObject
+class Node
 {
 	public:
 		double x, y;
+		int id = 0;
 		double voltage = 0;
 		bool calculated = false;
+		bool forced = false;
 		std::vector<Terminal*> connected_terminals;
-		Node(MVector position)
-		{
-			x = position[0];
-			y = position[1];
-		}
-		void render (SDL_Renderer* r) override;
+		Node();
+		~Node();
 
 		MVector getPosition()
 		{
@@ -31,20 +29,27 @@ class Node : RenderObject
 };
 
 
-class Device : RenderObject
+class Device
 {
 public:
+	Terminal* getTerminal(int index);
+	int id = -1;
+	int deviceType = 0; //0 - Ground, 1 - Resistor, 2 - Voltage Source, 3 - Current Source
+	double value;
 	MVector position = NULL;
 	std::vector<Terminal*> terminals;
 	std::vector<MVector> offsets;
 
-	Device(MVector _pos);
+	Device(MVector _pos, int type, int terminals);
 
-	virtual void setOffsets() = 0;
-	virtual double calculateNodeVoltages(int terminalIndex, double step) = 0;
-	virtual double calculateCurrentOutOfNode(int terminalIndex, double step) = 0;
+	void init(MVector _pos);
 
-	virtual void render(SDL_Renderer* r);
+	void setOffsets();
+	void stepUpdate(double step);
+
+	void render(SDL_Renderer* r);
+
+	
 };
 
 class Terminal
@@ -54,7 +59,6 @@ public:
 	Node* node;
 	int terminalIndex;
 	MVector pos = MVector(2, 0, 0);
-	double current = 0; //current going out
 
 	Terminal(Device* _device, Node* _node, int _termIndex, MVector _pos)
 	{
@@ -65,27 +69,7 @@ public:
 		pos = _pos;
 	}
 
-	double exclusiceKCL(double step)
-	{
-		double incomingCurrent = 0;
-		for (int i = 0; i < node->connected_terminals.size(); i++)
-		{
-			Terminal* other = node->connected_terminals[i];
-			if (other != this)
-			{
-				incomingCurrent += other->getCurrentGoingOut(step);
-			}
-		}
-		return -incomingCurrent;
-	}
-
-	double getCurrentGoingOut(double step)
-	{
-		return device->calculateCurrentOutOfNode(terminalIndex, step);
-	}
-
-	double getVoltage(double step)
-	{
-		return device->calculateNodeVoltages(terminalIndex, step);
-	}
 };
+
+Node* mergeNodes(Node* A, Node* B);
+Node* connectTerminals(Terminal* A, Terminal* B);

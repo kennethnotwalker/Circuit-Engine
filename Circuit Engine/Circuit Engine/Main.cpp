@@ -6,35 +6,36 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_oldnames.h>
 #include "MathVector.h"
+#include "Node.h"
+#include "Resistor.h"
+#include "VoltageSource.h"
+#include "vector"
 
 using namespace std;
 
+vector<Device*> devices;
+
 void process(bool& running, SDL_Renderer* r)
 {
-	SDL_SetRenderDrawColor(r, 255, 0, 0, 255);
-	SDL_RenderLine(r, 0, 0, 500, 500);
-	SDL_FRect rect = SDL_FRect({ 100, 100, 200, 300 });
-	SDL_RenderRect(r, &rect);
+	for (int nodeIndex = 0; nodeIndex < devices.size(); nodeIndex++)
+	{
+		devices[0]->render(r);
+	}
 
 	return;
 }
 
 int main(void)
 {
-	MVector a(3, 0.0, 0.7, 10.0);
-	MVector b(3, 0.1, 0.8, 0.95);
+	
+	Ground* g = new Ground(MVector(2, 100.0, 100.0));
 
-	cout << a[1] << endl;
-
-	MVector c = a + b;
-
-	c.print();
-
+	devices.push_back((Device*)g);
 
 	SDL_Init(SDL_INIT_VIDEO);
 	bool global_running = true;
 
-	SDL_Window* window = SDL_CreateWindow("Circuit Simulator 2023", 1280, 720, 0);
+	SDL_Window* window = SDL_CreateWindow("Circuit Engine 2025", 1280, 720, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	while (global_running)
 	{
@@ -52,6 +53,8 @@ int main(void)
 		SDL_RenderPresent(renderer);
 	}
 	SDL_Quit();
+	
+	devices.clear();
 
 	return 0;
 }

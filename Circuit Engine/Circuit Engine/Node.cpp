@@ -31,6 +31,32 @@ Node::~Node()
 	GLOBAL_ID_COUNTER--;
 }
 
+void Node::render(SDL_Renderer* r)
+{
+	MVector center = MVector(2, 0, 0);
+	int avgCount = 0;
+	for (int termIndex = 0; termIndex < connected_terminals.size(); termIndex++) {
+
+		Terminal* other = connected_terminals[termIndex];
+		
+		center = center + other->pos + other->device->position;
+		avgCount++;
+	}
+	if (avgCount > 0)
+	{
+		center = center * (1.0 / avgCount);
+		SDL_SetRenderDrawColor(r, 0, 255, 255, 255);
+		for (int termIndex = 0; termIndex < connected_terminals.size(); termIndex++) {
+
+			Terminal* other = connected_terminals[termIndex];
+
+			MVector pos = other->pos + other->device->position;
+
+			SDL_RenderLine(r, center[0], center[1], pos[0], pos[1]);
+		}
+	}
+}
+
 void Device::setOffsets()
 {
 	return;
@@ -46,7 +72,7 @@ Device::Device(MVector _pos, int type, int terminals)
 	deviceType = type;
 	for (int i = 0; i < terminals; i++)
 	{
-		offsets.push_back(MVector(2, 0.0, 50.0 * (i - (terminals - 1) / 2.0)));
+		offsets.push_back(MVector(2, 0.0, -50.0 * (i - (terminals - 1) / 2.0)));
 	}
 	init(_pos);
 }
@@ -57,7 +83,7 @@ void Device::init(MVector _pos)
 	for (int connectionIndex = 0; connectionIndex < offsets.size(); connectionIndex++)
 	{
 		Node* newNode = new Node();
-		Terminal* newTerm = new Terminal(this, newNode, connectionIndex, _pos + offsets[connectionIndex]);
+		Terminal* newTerm = new Terminal(this, newNode, connectionIndex, offsets[connectionIndex]);
 		terminals.push_back(newTerm);
 	}
 }
@@ -96,10 +122,19 @@ void Device::render(SDL_Renderer* r)
 	for(int termIndex = 0; termIndex < terminals.size(); termIndex++)
 	{
 		Terminal* terminal = terminals[termIndex];
+
 		double radius = 10;
 		std::vector<SDL_FPoint> points;
 
-		MVector pos = terminal->pos;
+		MVector pos = terminal->pos + position;
+
+		if (termIndex < terminals.size() - 1)
+		{
+			Terminal* nextTerminal = terminals[termIndex + 1];
+			MVector nextPos = nextTerminal->pos + position;
+			SDL_SetRenderDrawColor(r, 255, 0, 0, 255);
+			SDL_RenderLine(r, pos[0], pos[1], nextPos[0], nextPos[1]);
+		}
 
 		for (int x = -radius; x < radius; x++)
 		{
@@ -113,6 +148,7 @@ void Device::render(SDL_Renderer* r)
 				}
 			}
 		}
+		
 		SDL_SetRenderDrawColor(r, 255, 0, 0, 255);
 		SDL_RenderPoints(r, points.data(), points.size());
 		TTF_Font* calibri = TTF_OpenFont("calibri-regular.ttf", 24);
@@ -139,4 +175,37 @@ void Device::render(SDL_Renderer* r)
 Terminal* Device::getTerminal(int index)
 {
 	return terminals[index];
+}
+
+std::vector<Node*> getNodeList()
+{
+	return nodeList;
+}
+
+Node* getNodeByID(int id)
+{
+	for (int i = 0; i < nodeList.size(); i++)
+	{
+		if (nodeList[i]->id == id)
+		{
+			return nodeList[i];
+		}
+	}
+	return nullptr;
+}
+
+Terminal* Terminal::getOtherTerminal()
+{
+	if (device->terminals.size() < 2)
+	{
+		return device->terminals[0];
+	}
+	if (device->terminals[0] == this)
+	{
+		return device->terminals[1];
+	}
+	else
+	{
+		return device->terminals[0];
+	}
 }

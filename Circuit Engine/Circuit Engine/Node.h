@@ -26,6 +26,8 @@ class Node
 		{
 			return MVector(2, x, y);
 		}
+
+		void render(SDL_Renderer* r);
 };
 
 
@@ -35,6 +37,7 @@ public:
 	Terminal* getTerminal(int index);
 	int id = -1;
 	int deviceType = 0; //0 - Ground, 1 - Resistor, 2 - Voltage Source, 3 - Current Source
+	double rotation = 0;
 	double value;
 	MVector position = NULL;
 	std::vector<Terminal*> terminals;
@@ -69,7 +72,16 @@ public:
 		pos = _pos;
 	}
 
+	Terminal* getOtherTerminal();
+	MVector getGlobalPosition()
+	{
+
+	}
+
 };
 
 Node* mergeNodes(Node* A, Node* B);
 Node* connectTerminals(Terminal* A, Terminal* B);
+
+std::vector<Node*> getNodeList();
+Node* getNodeByID(int id);

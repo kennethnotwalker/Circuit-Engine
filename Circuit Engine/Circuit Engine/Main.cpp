@@ -18,12 +18,85 @@ const double STEP_SIZE = 0.1;
 
 void process(bool& running, SDL_Renderer* r)
 {
-	
+	std::vector<Node*> nodes = getNodeList();
+
+	Matrix* solver = new Matrix(nodes.size(), nodes.size()+1);
+	for (int index = 0; index < nodes.size(); index++)
+	{
+		Node* node = nodes[index];
+
+		double lhsCoef = 0;
+
+		for (int otherIndex = 0; otherIndex < node->connected_terminals.size(); otherIndex++)
+		{
+			Terminal* terminal = node->connected_terminals[otherIndex];
+			Device* device = terminal->device;
+			Node* otherNode = terminal->getOtherTerminal()->node;
+
+			if (device->deviceType == 0) //Ground
+			{
+				solver->zeroRow(index);
+				solver->insert(index, node->id, 1);
+				break;
+			}
+
+			if (device->deviceType == 1) //Resistor
+			{
+				double coef = 1.0 / (device->value);
+
+				solver->addTo(index, node->id, coef);
+				solver->addTo(index, otherNode->id, -coef);
+			}
+
+			if (device->deviceType == 2) //Voltage Source
+			{
+				solver->zeroRow(index);
+				solver->insert(index, node->id, 1);
+				solver->insert(index, otherNode->id, -1);
+				if (terminal == device->terminals[0]) //T0 - T1 = - V or //T1 - T0 = V
+				{
+					solver->insert(index, solver->cols - 1, -device->value);
+				}
+				else
+				{
+					solver->insert(index, solver->cols - 1, device->value);
+				}
+				break;
+			}
+		}
+	}
+
+	Matrix* solution = solver->RREF();
+
+	for (int i = 0; i < solution->rows; i++)
+	{
+		for (int c = 0; c < solution->rows; c++)
+		{
+			if (solution->get(i, c) == 1)
+			{
+				getNodeByID(c)->voltage = solution->get(i, solution->cols - 1);
+			}
+		}
+	}
+
+	for (int d = 0; d < devices.size(); d++)
+	{
+		devices[d]->render(r);
+	}
+
+	for (int n = 0; n < nodes.size(); n++)
+	{
+		Node* node = nodes[n];
+		node->render(r);
+	}
+
+	delete solution;
 	return;
 }
 
 int main(void)
 {
+
 	Device* g = new Device(MVector(2, 400.0, 400.0), 0, 1);
 	Device* v = new Device(MVector(2, 400.0, 300.0), 2, 2); v->value = 10;
 	Device* r = new Device(MVector(2, 600.0, 300.0), 1, 2); r->value = 10;

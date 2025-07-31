@@ -35,16 +35,25 @@ private:
 public:
 	int rows, cols = 0;
 	Matrix(int _rows, int _columns);
+	~Matrix();
 
 	void print();
 
 	void map(vector<vector<double>> vec);
 
 	void insert(int row, int col, double value);
+	void addTo(int row, int col, double value);
 	double get(int row, int col);
 
 	void linearRowOperation(int sourceRow, int targetRow, double scale);
 	void linearRowScale(int row, double scale);
 
+	void zeroRow(int row);
+
+	Matrix* getRow(int row);
+	Matrix* getCol(int col);
+
 	Matrix* RREF();
+
+	Matrix* operator*(Matrix& rhs);
 };

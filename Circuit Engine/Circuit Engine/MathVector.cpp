@@ -132,6 +132,7 @@ double MVector::distance(MVector A, MVector B)
 
 double MVector::cosBetween(MVector A, MVector B)
 {
+	if (isZeroVector(A.values.data(), A.size) && isZeroVector(B.values.data(), B.size)) { return 1; }
 	double cosangle = (A * B) / (A.magnitude() * B.magnitude());
 
 	return cosangle;

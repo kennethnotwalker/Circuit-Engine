@@ -1,4 +1,5 @@
 #include "MathVector.h"
+#include "ComplexMatrix.h"
 #include "Node.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
@@ -67,12 +68,12 @@ void Node::render(SDL_Renderer* r)
 
 	SDL_Color green = { 0, 255, 0 };
 
-	std::string s_voltage = std::to_string(voltage);
-	int digits = 1 + log10(voltage);
+	std::string s_voltage = std::to_string(voltage.real);
+	int digits = 1 + log10(voltage.real);
 	if (digits < 1) { digits = 1; }
 	int decimals = 2;
 	int maxlen = digits + 1 + decimals;
-	if (voltage < 0)
+	if (voltage.real < 0)
 	{
 		maxlen += 1;
 	}
@@ -174,12 +175,12 @@ void Device::render(SDL_Renderer* r)
 
 	SDL_Color green = { 255, 0, 0 };
 
-	std::string s_voltage = std::to_string(value);
-	int digits = 1 + log10(value);
+	std::string s_voltage = std::to_string(value.real);
+	int digits = 1 + log10(value.real);
 	if (digits < 1) { digits = 1; }
 	int decimals = 2;
 	int maxlen = digits + 1 + decimals;
-	if (value < 0)
+	if (value.real < 0)
 	{
 		maxlen += 1;
 	}
@@ -257,9 +258,9 @@ MVector Terminal::getGlobalPosition()
 	return globalPos;
 }
 
-void addEmptyEquation(Matrix* solver, std::vector<double*>& equations)
+void addEmptyEquation(ComplexMatrix* solver, std::vector<complex*>& equations)
 {
-	double* equation = new double[solver->cols];
+	complex* equation = new complex[solver->cols];
 	for (int c = 0; c < solver->cols; c++)
 	{
 		equation[c] = 0;
@@ -267,7 +268,7 @@ void addEmptyEquation(Matrix* solver, std::vector<double*>& equations)
 	equations.push_back(equation);
 }
 
-void resetEquation(Matrix* solver, double* equation)
+void resetEquation(ComplexMatrix* solver, complex* equation)
 {
 	for (int c = 0; c < solver->cols; c++)
 	{
@@ -275,7 +276,7 @@ void resetEquation(Matrix* solver, double* equation)
 	}
 }
 
-void Node::generateEquations(Matrix* solver, vector<double*>& equations, vector<int>& addedNodes, bool& forced)
+void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced)
 {
 	if (std::find(addedNodes.begin(), addedNodes.end(), id) != addedNodes.end()) { return; }
 
@@ -299,7 +300,7 @@ void Node::generateEquations(Matrix* solver, vector<double*>& equations, vector<
 
 		if (device->deviceType == 1 && !forced) //Resistor
 		{
-			double coef = 1.0 / (device->value);
+			complex coef = 1.0 / (device->value);
 
 			equations[0][id] += coef;
 			equations[0][otherNode->id] += -coef;

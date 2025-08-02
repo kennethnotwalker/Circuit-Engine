@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include "ImageLoader.h"
+#include "ComplexMatrix.h"
 
 class Node;
 class Terminal;
@@ -20,7 +21,7 @@ class Node
 	public:
 		double x, y;
 		int id = 0;
-		double voltage = 0;
+		complex voltage = 0;
 		bool calculated = false;
 		bool forced = false;
 		std::vector<Junction*> junctions;
@@ -32,7 +33,7 @@ class Node
 			return MVector(2, x, y);
 		}
 
-		void generateEquations(Matrix* solver, vector<double*>& equations, vector<int>& addedNodes, bool& forced);
+		void generateEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced);
 
 		void render(SDL_Renderer* r);
 };
@@ -45,7 +46,7 @@ public:
 	int id = -1;
 	int deviceType = 0; //0 - Ground, 1 - Resistor, 2 - Voltage Source, 3 - Current Source
 	double rotation = 0;
-	double value;
+	complex value;
 	MVector position = NULL;
 	SDL_Texture* texture;
 	std::vector<Terminal*> terminals;
@@ -126,5 +127,5 @@ std::vector<Junction*> getJunctionList();
 
 Node* getNodeByID(int id);
 
-void addEmptyEquation(Matrix* solver, std::vector<double*>& equations);
-void resetEquation(Matrix* solver, double* equation);
+void addEmptyEquation(ComplexMatrix* solver, std::vector<complex*>& equations);
+void resetEquation(ComplexMatrix* solver, complex* equation);

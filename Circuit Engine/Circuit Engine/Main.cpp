@@ -68,7 +68,7 @@ void process(bool& running, SDL_Renderer* r)
 
 	std::vector<Node*> nodes = getNodeList();
 	if (simulating) {
-		Matrix* solver = new Matrix(nodes.size(), nodes.size() + 1);
+		ComplexMatrix* solver = new ComplexMatrix(nodes.size(), nodes.size() + 1);
 
 		vector<int> equationIDs;
 		int equationsInSolver = 0;
@@ -76,7 +76,7 @@ void process(bool& running, SDL_Renderer* r)
 		for (int index = 0; index < nodes.size(); index++)
 		{
 			Node* node = nodes[index];
-			std::vector<double*> equations;
+			std::vector<complex*> equations;
 			bool forced = false;
 
 			node->generateEquations(solver, equations, equationIDs, forced);
@@ -94,7 +94,7 @@ void process(bool& running, SDL_Renderer* r)
 
 		solver->print();
 
-		Matrix* solution = solver->RREF();
+		ComplexMatrix* solution = solver->RREF();
 		cout << "solved: " << endl;
 		solution->print();
 

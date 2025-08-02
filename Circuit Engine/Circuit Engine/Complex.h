@@ -40,7 +40,19 @@ public:
 
     friend std::ostream& operator<< (std::ostream& os, const complex& x)
     {
-        os << "(" << x.real << " + " << x.imaginary << "i)";
+        if (x.imaginary != 0)
+        {
+            os << x.real << " + " << x.imaginary << "i";
+        }
+        else if(x.imaginary == 0)
+        {
+            os << x.real;
+        }
+        else
+        {
+            os << x.imaginary << "i";
+        }
+        
         return os;
     }
 

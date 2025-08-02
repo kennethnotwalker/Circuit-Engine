@@ -9,6 +9,8 @@
 class Node;
 class Terminal;
 class Device;
+class Junction;
+class Wire;
 
 class Node
 {
@@ -18,7 +20,7 @@ class Node
 		double voltage = 0;
 		bool calculated = false;
 		bool forced = false;
-		std::vector<Terminal*> connected_terminals;
+		std::vector<Junction*> junctions;
 		Node();
 		~Node();
 
@@ -26,6 +28,8 @@ class Node
 		{
 			return MVector(2, x, y);
 		}
+
+		void generateEquations(Matrix* solver, vector<double*>& equations, vector<int>& addedNodes, bool& forced);
 
 		void render(SDL_Renderer* r);
 };
@@ -55,33 +59,68 @@ public:
 	
 };
 
-class Terminal
+class Wire
+{
+public:
+	MVector from = MVector(2, 0, 0);
+	MVector to = MVector(2, 0, 0);
+
+	Junction* fromJunc;
+	Junction* toJunc;
+
+	bool connected;
+
+	Wire(MVector _from, MVector _to);
+
+	void render(SDL_Renderer* r);
+
+	static MVector snap(MVector _from, MVector _to);
+};
+
+class Junction
+{
+public:
+	std::vector<Wire*> wires;
+	Node* node;
+
+	MVector pos = MVector(2, 0, 0);
+
+	int type = 0;
+
+	Junction(MVector _pos) { pos = _pos; };
+
+	virtual MVector getGlobalPosition() { return pos; }
+};
+
+class Terminal : public Junction
 {
 public:
 	Device* device;
-	Node* node;
+	
 	int terminalIndex;
-	MVector pos = MVector(2, 0, 0);
+	
 
-	Terminal(Device* _device, Node* _node, int _termIndex, MVector _pos)
+	Terminal(Device* _device, Node* _node, int _termIndex, MVector _pos) : Junction(_pos)
 	{
+		type = 1;
 		device = _device;
 		node = _node;
-		node->connected_terminals.push_back(this);
+		node->junctions.push_back(this);
 		terminalIndex = _termIndex;
-		pos = _pos;
 	}
 
 	Terminal* getOtherTerminal();
-	MVector getGlobalPosition()
-	{
-
-	}
+	MVector getGlobalPosition() override;
 
 };
 
 Node* mergeNodes(Node* A, Node* B);
-Node* connectTerminals(Terminal* A, Terminal* B);
+Node* connectJunction(Junction* A, Junction* B);
 
 std::vector<Node*> getNodeList();
+std::vector<Junction*> getJunctionList();
+
 Node* getNodeByID(int id);
+
+void addEmptyEquation(Matrix* solver, std::vector<double*>& equations);
+void resetEquation(Matrix* solver, double* equation);

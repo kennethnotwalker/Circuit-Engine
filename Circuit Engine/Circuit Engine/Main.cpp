@@ -13,70 +13,112 @@
 using namespace std;
 
 vector<Device*> devices;
+vector<Wire*> wires;
 vector<Terminal*> forced;
+bool simulating = false;
 const double STEP_SIZE = 0.1;
+
+bool KEYSDOWN[322];
+bool KEYSUP[322];
+bool KEYSHELD[322];
+
+bool mouseDown, mouseJustPressed, mouseJustReleased = false;
+
+MVector heldPosition = MVector(2, 0, 0);
 
 void process(bool& running, SDL_Renderer* r)
 {
-	std::vector<Node*> nodes = getNodeList();
-
-	Matrix* solver = new Matrix(nodes.size(), nodes.size()+1);
-	for (int index = 0; index < nodes.size(); index++)
+	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_SPACE])
 	{
-		Node* node = nodes[index];
+		simulating = !simulating;
+	}
+	float mouseX, mouseY = 0;
+	cout << "mouse down: " << mouseDown << endl;
+	SDL_GetMouseState(&mouseX, &mouseY);
 
-		double lhsCoef = 0;
+	MVector mousePosition(2, mouseX, mouseY);
+	if (mouseJustPressed)
+	{
+		heldPosition = mousePosition;
+	}
+	if (mouseDown)
+	{
+		SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+		SDL_FRect rect = { mouseX - 5, mouseY - 5, 10, 10 };
 
-		for (int otherIndex = 0; otherIndex < node->connected_terminals.size(); otherIndex++)
+		MVector projectedPos = Wire::snap(heldPosition, mousePosition);
+		SDL_RenderLine(r, heldPosition[0], heldPosition[1], projectedPos[0], projectedPos[1]);
+	}
+	if (mouseJustReleased)
+	{
+		Wire* wire = new Wire(heldPosition, Wire::snap(heldPosition, mousePosition));
+		if (wire->connected)
 		{
-			Terminal* terminal = node->connected_terminals[otherIndex];
-			Device* device = terminal->device;
-			Node* otherNode = terminal->getOtherTerminal()->node;
-
-			if (device->deviceType == 0) //Ground
-			{
-				solver->zeroRow(index);
-				solver->insert(index, node->id, 1);
-				break;
-			}
-
-			if (device->deviceType == 1) //Resistor
-			{
-				double coef = 1.0 / (device->value);
-
-				solver->addTo(index, node->id, coef);
-				solver->addTo(index, otherNode->id, -coef);
-			}
-
-			if (device->deviceType == 2) //Voltage Source
-			{
-				solver->zeroRow(index);
-				solver->insert(index, node->id, 1);
-				solver->insert(index, otherNode->id, -1);
-				if (terminal == device->terminals[0]) //T0 - T1 = - V or //T1 - T0 = V
-				{
-					solver->insert(index, solver->cols - 1, -device->value);
-				}
-				else
-				{
-					solver->insert(index, solver->cols - 1, device->value);
-				}
-				break;
-			}
+			wires.push_back(wire);
+		}
+		else
+		{
+			delete wire;
 		}
 	}
 
-	Matrix* solution = solver->RREF();
+	std::vector<Node*> nodes = getNodeList();
+	if (simulating) {
+		Matrix* solver = new Matrix(nodes.size(), nodes.size() + 1);
 
-	for (int i = 0; i < solution->rows; i++)
-	{
-		for (int c = 0; c < solution->rows; c++)
+		vector<int> equationIDs;
+		int equationsInSolver = 0;
+
+		for (int index = 0; index < nodes.size(); index++)
 		{
-			if (solution->get(i, c) == 1)
+			Node* node = nodes[index];
+			std::vector<double*> equations;
+			bool forced = false;
+
+			node->generateEquations(solver, equations, equationIDs, forced);
+
+			for (int i = 0; i < equations.size(); i++)
 			{
-				getNodeByID(c)->voltage = solution->get(i, solution->cols - 1);
+				if (equationsInSolver < solver->rows && solver->addLIRow(equationsInSolver, equations[i]))
+				{
+					equationsInSolver++;
+				}
+				delete[] equations[i];
+			}
+
+		}
+
+		solver->print();
+
+		Matrix* solution = solver->RREF();
+		cout << "solved: " << endl;
+		solution->print();
+
+		for (int i = 0; i < solution->rows; i++)
+		{
+			int nonzeroes = 0;
+			int solutionIndex = 0;
+
+			for (int c = 0; c < solution->rows; c++)
+			{
+				if (abs(solution->get(i, c)) > 0.000001)
+				{
+					nonzeroes++;
+				}
+				if (abs(solution->get(i, c) - 1) < 0.00001)
+				{
+					solutionIndex = c;
+				}
+			}
+			if (nonzeroes == 1)
+			{
+				cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
+				getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);
 			}
 		}
+
+		delete solution;
+		delete solver;
 	}
 
 	for (int d = 0; d < devices.size(); d++)
@@ -90,27 +132,40 @@ void process(bool& running, SDL_Renderer* r)
 		node->render(r);
 	}
 
-	delete solution;
+	
 	return;
 }
 
 int main(void)
 {
+	for (int i = 0; i < 322; i++)
+	{
+		KEYSDOWN[i] = false;
+		KEYSUP[i] = false;
+		KEYSHELD[i] = false;
+	}
 
-	Device* g = new Device(MVector(2, 400.0, 400.0), 0, 1);
-	Device* v = new Device(MVector(2, 400.0, 300.0), 2, 2); v->value = 10;
-	Device* r = new Device(MVector(2, 600.0, 300.0), 1, 2); r->value = 10;
-	Device* r2 = new Device(MVector(2, 800.0, 300.0), 1, 2); r2->value = 10;
+	Device* g = new Device(MVector(2, 400.0, 300.0), 0, 1);
+	Device* v = new Device(MVector(2, 400.0, 200.0), 2, 2); v->value = 10;
+	Device* r = new Device(MVector(2, 500.0, 150.0), 1, 2); r->rotation = 90; r->value = 10;
+	Device* r2 = new Device(MVector(2, 650.0, 150.0), 1, 2); r2->rotation = 90; r2->value = 5;
+	Device* r3 = new Device(MVector(2, 650.0, 100.0), 1, 2); r3->rotation = 90; r3->value = 15;
+	Device* v2 = new Device(MVector(2, 700.0, 250.0), 2, 2); v2->value = 0.1;
 
-	connectTerminals(g->getTerminal(0), v->getTerminal(0));
-	connectTerminals(v->getTerminal(1), r->getTerminal(0));
-	connectTerminals(r->getTerminal(1), r2->getTerminal(0));
-	connectTerminals(r2->getTerminal(1), g->getTerminal(0));
+	connectJunction(g->terminals[0], v->terminals[0]);
+	connectJunction(v->terminals[1], r->terminals[0]);
+	connectJunction(r->terminals[1], r2->terminals[0]);
+	connectJunction(r->terminals[1], r3->terminals[0]);
+	connectJunction(r2->terminals[1], v2->terminals[1]);
+	connectJunction(r3->terminals[1], g->terminals[0]);
+	connectJunction(v2->terminals[0], g->terminals[0]);
 
 	devices.push_back((Device*)g);
 	devices.push_back((Device*)v);
 	devices.push_back((Device*)r);
 	devices.push_back((Device*)r2);
+	devices.push_back((Device*)r3);
+	devices.push_back((Device*)v2);
 
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
@@ -120,11 +175,42 @@ int main(void)
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	while (global_running)
 	{
-		SDL_Event events;
-
-		if (SDL_WaitEvent(&events))
+		for (int i = 0; i < 322; i++)
 		{
-			if (events.type == SDL_EVENT_QUIT) { global_running = false; }
+			KEYSDOWN[i] = false;
+			KEYSUP[i] = false;
+		}
+
+		mouseJustPressed = false;
+		mouseJustReleased = false;
+		SDL_Event events;
+		while(SDL_PollEvent(&events))
+		{
+			switch (events.type)
+			{
+				case SDL_EVENT_QUIT:
+					global_running = false;
+					break;
+				case SDL_EVENT_MOUSE_BUTTON_DOWN:
+					mouseJustPressed = true;
+					mouseDown = true;
+					break;
+				case SDL_EVENT_MOUSE_BUTTON_UP:
+					if (!mouseJustPressed)
+					{
+						mouseJustReleased = true;
+						mouseDown = false;
+					}
+					break;
+				case SDL_EVENT_KEY_DOWN:
+					if (!KEYSHELD[events.key.scancode]) { KEYSDOWN[events.key.scancode] = true; }
+					KEYSHELD[events.key.scancode] = true;
+					break;
+				case SDL_EVENT_KEY_UP:
+					if (KEYSHELD[events.key.scancode]) { KEYSUP[events.key.scancode] = true; }
+					KEYSHELD[events.key.scancode] = false;
+					break;
+			}
 		}
 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
 		SDL_RenderClear(renderer);

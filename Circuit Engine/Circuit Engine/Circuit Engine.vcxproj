@@ -136,6 +136,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MathVector.cpp" />
     <ClCompile Include="Node.cpp" />
+    <ClCompile Include="Wire.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MathVector.h" />

@@ -100,6 +100,51 @@ double MVector::operator[](int index)
 	return (this->values)[index];
 }
 
+double MVector::magnitude()
+{
+	double mag = 0;
+	for (int i = 0; i < size; i++)
+	{
+		mag += values[i] * values[i];
+	}
+
+	return sqrt(mag);
+}
+
+double MVector::distance(MVector A, MVector B)
+{
+	MVector displacement = B - A;
+	return displacement.magnitude();
+}
+
+double MVector::cosBetween(MVector A, MVector B)
+{
+	double cosangle = (A * B) / (A.magnitude() * B.magnitude());
+
+	return cosangle;
+}
+
+double MVector::angleBetween(MVector A, MVector B)
+{
+	double cosangle = cosBetween(A,B);
+	double angle = acos(cosangle);
+
+	return angle;
+}
+
+bool MVector::isZeroVector(double* nums, int _size)
+{
+	double tolerance = 0.00000001;
+	for (int i = 0; i < _size; i++)
+	{
+		if (abs(nums[i]) > tolerance)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 Matrix::~Matrix()
 {
 	if (data == nullptr) {return;}
@@ -123,6 +168,29 @@ Matrix::Matrix(int _rows, int _columns)
 		for (int c = 0; c < cols; c++)
 		{
 			data[r][c] = 0;
+		}
+	}
+}
+
+Matrix::Matrix(Matrix* toCopy)
+{
+	rows = toCopy->rows;
+	cols = toCopy->cols;
+	data = new double* [rows];
+	for (int r = 0; r < rows; r++)
+	{
+		data[r] = new double[cols];
+		for (int c = 0; c < cols; c++)
+		{
+			data[r][c] = 0;
+		}
+	}
+
+	for (int r = 0; r < rows; r++)
+	{
+		for (int c = 0; c < cols; c++)
+		{
+			insert(r, c, toCopy->get(r, c));
 		}
 	}
 }
@@ -213,24 +281,71 @@ void Matrix::zeroRow(int row)
 	}
 }
 
+void Matrix::addRow()
+{
+	rows++;
+	double** newData = new double* [rows];
+	for (int r = 0; r < rows-1; r++)
+	{
+		newData[r] = data[r];
+	}
+	newData[rows - 1] = new double[cols];
+	delete data;
+	data = newData;
+}
+
 Matrix* Matrix::RREF()
 {
-	Matrix* m = new Matrix(*this);
-	for (int c = 0; c < rows; c++) //go through columns bounded by number of rows
+	Matrix* m = new Matrix(this);
+	for (int sourceRow = 0; sourceRow < rows; sourceRow++) //go through columns bounded by number of rows
 	{
-		int sourceRow = c;
-		if (get(sourceRow, c) == 0) { continue; }
-		linearRowScale(sourceRow, 1.0 / get(sourceRow, c));
-
+		int sourceCol = 0;
+		while (sourceCol < rows && m->get(sourceRow, sourceCol) == 0) { sourceCol++; }
+		if (m->get(sourceRow, sourceCol) == 0) { continue; }
+		m->linearRowScale(sourceRow, 1.0 / m->get(sourceRow, sourceCol));
 		for (int r = 0; r < rows; r++)
 		{
 			if (r == sourceRow) { continue; }
 			
-			double scale = get(r, c);
+			double scale = m->get(r, sourceCol);
 			m->linearRowOperation(sourceRow, r, -scale);
+			
 		}
 	}
 	return m;
+}
+
+bool Matrix::rowExists(double* rowVector)
+{
+	for (int r = 0; r < rows; r++)
+	{
+		bool matches = true;
+		for (int c = 0; c < cols; c++)
+		{
+			if (data[r][c] != rowVector[c])
+			{
+				matches = false;
+				break;
+			}
+		}
+		if (matches) { return true; }
+	}
+	return false;
+}
+
+bool Matrix::linearCombinationExists(double* rowVector)
+{
+	MVector rowMVector = MVector(rowVector, cols);
+
+	for (int r = 0; r < rows; r++)
+	{
+		MVector currentVector = MVector(data[r], cols);
+
+		double cosangle = MVector::cosBetween(rowMVector, currentVector);
+
+		if (abs(abs(cosangle) - 1) < 0.00001) { return true; }
+	}
+	return false;
 }
 
 Matrix* Matrix::operator*(Matrix& rhs)
@@ -254,4 +369,22 @@ Matrix* Matrix::operator*(Matrix& rhs)
 
 	return results;
 	
+}
+
+void Matrix::setRow(int row, double* rowVector)
+{
+	for (int c = 0; c < cols; c++)
+	{
+		insert(row, c, rowVector[c]);
+	}
+}
+
+bool Matrix::addLIRow(int row, double* rowVector) //return true if successful
+{
+	if (!linearCombinationExists(rowVector) && !MVector::isZeroVector(rowVector, cols))
+	{
+		setRow(row, rowVector);
+		return true;
+	}
+	return false;
 }

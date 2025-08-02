@@ -19,12 +19,18 @@ public:
 
 	int get_size();
 	void print();
+	double magnitude();
+	static double distance(MVector A, MVector B);
+	static double angleBetween(MVector A, MVector B);
+	static double cosBetween(MVector A, MVector B);
 
 	double operator[](int index);
 	MVector operator+(MVector rhs);
 	MVector operator-(MVector rhs);
 	MVector operator*(double rhs);
 	double operator*(MVector rhs);
+
+	static bool isZeroVector(double* nums, int _size);
 
 };
 
@@ -35,6 +41,7 @@ private:
 public:
 	int rows, cols = 0;
 	Matrix(int _rows, int _columns);
+	Matrix(Matrix* toCopy);
 	~Matrix();
 
 	void print();
@@ -53,7 +60,17 @@ public:
 	Matrix* getRow(int row);
 	Matrix* getCol(int col);
 
+	void setRow(int row, double* rowVector);
+
+	bool rowExists(double* rowVector);
+	bool linearCombinationExists(double* rowVector);
+
+	void addRow();
+
 	Matrix* RREF();
 
 	Matrix* operator*(Matrix& rhs);
+
+	bool addLIRow(int row, double* rowVector);
+	
 };

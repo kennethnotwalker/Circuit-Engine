@@ -10,6 +10,7 @@
 #include "vector"
 #include "SDL3_ttf/SDL_ttf.h"
 #include "ImageLoader.h"
+#include "Complex.h"
 
 using namespace std;
 
@@ -147,6 +148,10 @@ int main(void)
 		KEYSUP[i] = false;
 		KEYSHELD[i] = false;
 	}
+
+	complex a = 5;
+
+	complex b = complex(0.1, 7);
 
 
 

@@ -9,8 +9,11 @@
 #include "Node.h"
 #include "vector"
 #include "SDL3_ttf/SDL_ttf.h"
+#include "ImageLoader.h"
 
 using namespace std;
+
+ImageLoader imageLoader;
 
 vector<Device*> devices;
 vector<Wire*> wires;
@@ -33,7 +36,7 @@ void process(bool& running, SDL_Renderer* r)
 		simulating = !simulating;
 	}
 	float mouseX, mouseY = 0;
-	cout << "mouse down: " << mouseDown << endl;
+
 	SDL_GetMouseState(&mouseX, &mouseY);
 
 	MVector mousePosition(2, mouseX, mouseY);
@@ -112,7 +115,7 @@ void process(bool& running, SDL_Renderer* r)
 			}
 			if (nonzeroes == 1)
 			{
-				cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
+				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
 				getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);
 			}
 		}
@@ -145,27 +148,7 @@ int main(void)
 		KEYSHELD[i] = false;
 	}
 
-	Device* g = new Device(MVector(2, 400.0, 300.0), 0, 1);
-	Device* v = new Device(MVector(2, 400.0, 200.0), 2, 2); v->value = 10;
-	Device* r = new Device(MVector(2, 500.0, 150.0), 1, 2); r->rotation = 90; r->value = 10;
-	Device* r2 = new Device(MVector(2, 650.0, 150.0), 1, 2); r2->rotation = 90; r2->value = 5;
-	Device* r3 = new Device(MVector(2, 650.0, 100.0), 1, 2); r3->rotation = 90; r3->value = 15;
-	Device* v2 = new Device(MVector(2, 700.0, 250.0), 2, 2); v2->value = 0.1;
 
-	connectJunction(g->terminals[0], v->terminals[0]);
-	connectJunction(v->terminals[1], r->terminals[0]);
-	connectJunction(r->terminals[1], r2->terminals[0]);
-	connectJunction(r->terminals[1], r3->terminals[0]);
-	connectJunction(r2->terminals[1], v2->terminals[1]);
-	connectJunction(r3->terminals[1], g->terminals[0]);
-	connectJunction(v2->terminals[0], g->terminals[0]);
-
-	devices.push_back((Device*)g);
-	devices.push_back((Device*)v);
-	devices.push_back((Device*)r);
-	devices.push_back((Device*)r2);
-	devices.push_back((Device*)r3);
-	devices.push_back((Device*)v2);
 
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
@@ -173,6 +156,38 @@ int main(void)
 
 	SDL_Window* window = SDL_CreateWindow("Circuit Engine 2025", 1280, 720, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+
+	//load images
+	imageLoader.loadImage(renderer, "symbol_R", "imgs/resistor.png");
+	imageLoader.loadImage(renderer, "symbol_V", "imgs/vsource.png");
+	imageLoader.loadImage(renderer, "symbol_G", "imgs/ground.png");
+
+	//load devices
+	Device* g = new Device(MVector(2, 640.0, 400.0), 0, 1, "symbol_G", imageLoader); g->rotation = 180;
+	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "symbol_V", imageLoader); v->value = 10;
+	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r->rotation = 90; r->value = 10;
+	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "symbol_R", imageLoader); r2->rotation = 90; r2->value = 5;
+	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r3->rotation = 0; r3->value = 13;
+	Device* g2 = new Device(r3->position + MVector(2, 0.0, -100.0), 0, 1, "symbol_G", imageLoader); g2->rotation = 0;
+	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "symbol_V", imageLoader); v2->value = 0.1;
+
+	connectJunction(g->terminals[0], v->terminals[0]);
+	connectJunction(v->terminals[1], r->terminals[0]);
+	connectJunction(r->terminals[1], r2->terminals[0]);
+	connectJunction(r->terminals[1], r3->terminals[0]);
+	connectJunction(r3->terminals[1], g2->terminals[0]);
+	connectJunction(r2->terminals[1], v2->terminals[1]);
+	connectJunction(v2->terminals[0], g->terminals[0]);
+
+	devices.push_back((Device*)g);
+	devices.push_back((Device*)g2);
+	devices.push_back((Device*)v);
+	devices.push_back((Device*)v2);
+	devices.push_back((Device*)r);
+	devices.push_back((Device*)r2);
+	devices.push_back((Device*)r3);
+	
+
 	while (global_running)
 	{
 		for (int i = 0; i < 322; i++)

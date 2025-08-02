@@ -3,8 +3,11 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_image/SDL_image.h>
 #include "MathVector.h"
 #include <vector>
+#include <string>
+#include "ImageLoader.h"
 
 class Node;
 class Terminal;
@@ -44,10 +47,11 @@ public:
 	double rotation = 0;
 	double value;
 	MVector position = NULL;
+	SDL_Texture* texture;
 	std::vector<Terminal*> terminals;
 	std::vector<MVector> offsets;
 
-	Device(MVector _pos, int type, int terminals);
+	Device(MVector _pos, int type, int terminals, std::string textureAlias, ImageLoader& loader);
 
 	void init(MVector _pos);
 

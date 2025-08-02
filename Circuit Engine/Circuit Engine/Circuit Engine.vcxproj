@@ -134,6 +134,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Complex.cpp" />
+    <ClCompile Include="ComplexMatrix.cpp" />
     <ClCompile Include="ImageLoader.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MathVector.cpp" />
@@ -142,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Complex.h" />
+    <ClInclude Include="ComplexMatrix.h" />
     <ClInclude Include="ImageLoader.h" />
     <ClInclude Include="MathVector.h" />
     <ClInclude Include="Node.h" />

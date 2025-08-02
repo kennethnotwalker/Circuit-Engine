@@ -1,5 +1,6 @@
 #include "MathVector.h"
 #include <iostream>
+#include "Complex.h"
 
 using namespace std;
 
@@ -28,6 +29,18 @@ MVector::MVector(double* _values, int len)
 	for (int i = 0; i < len; i++)
 	{
 		values.push_back(_values[i]);
+	}
+}
+
+MVector::MVector(complex* _values, int axis, int len)
+{
+	size = len;
+
+	for (int i = 0; i < len; i++)
+	{
+		double value = _values[i].real;
+		if (axis == 1) { value = _values[i].imaginary; }
+		values.push_back(value);
 	}
 }
 
@@ -133,6 +146,19 @@ double MVector::angleBetween(MVector A, MVector B)
 }
 
 bool MVector::isZeroVector(double* nums, int _size)
+{
+	double tolerance = 0.00000001;
+	for (int i = 0; i < _size; i++)
+	{
+		if (abs(nums[i]) > tolerance)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool MVector::isComplexZeroVector(complex* nums, int _size)
 {
 	double tolerance = 0.00000001;
 	for (int i = 0; i < _size; i++)

@@ -19,6 +19,11 @@ bool operator==(complex a, complex b)
     return a.real == b.real && a.imaginary == b.imaginary;
 }
 
+bool operator!=(complex a, complex b)
+{
+    return !(a == b);
+}
+
 complex operator*(complex a, complex b)
 {
     return complex(a.real * b.real - a.imaginary * b.imaginary, a.real * b.imaginary + a.imaginary * b.real);
@@ -39,6 +44,31 @@ complex operator/(complex A, complex B)
 complex operator-(complex a, complex b)
 {
     return a + b * complex(-1);
+}
+
+void operator+=(complex& a, complex b)
+{
+    a = a + b;
+}
+
+void operator-=(complex& a, complex b)
+{
+    a = a - b;
+}
+
+void operator*=(complex& a, complex b)
+{
+    a = a * b;
+}
+
+void operator/=(complex& A, complex B)
+{
+    A = A/B;
+}
+
+double abs(complex a)
+{
+    return complex_modulus(a);
 }
 
 double complex_modulus(complex a)

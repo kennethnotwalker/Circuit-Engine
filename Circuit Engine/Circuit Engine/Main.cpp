@@ -151,8 +151,9 @@ int main(void)
 
 	complex a = 5;
 
-	complex b = complex(0.1, 7);
+	a += complex(0.1, 7);
 
+	cout << a << endl;
 
 
 	SDL_Init(SDL_INIT_VIDEO);

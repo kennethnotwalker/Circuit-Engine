@@ -2,6 +2,7 @@
 
 #include <cstdarg>
 #include <vector>
+#include "Complex.h"
 
 using namespace std;
 
@@ -14,6 +15,8 @@ public:
 	MVector(int count, ...);
 
 	MVector(double* _values, int len);
+
+	MVector(complex* _values, int axis, int len);
 
 	~MVector();
 
@@ -31,6 +34,7 @@ public:
 	double operator*(MVector rhs);
 
 	static bool isZeroVector(double* nums, int _size);
+	static bool isComplexZeroVector(complex* nums, int _size);
 
 };
 

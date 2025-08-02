@@ -1,5 +1,6 @@
 #pragma once
 
+#define _i complex(0, 1)
 #include <iostream>
 class complex {
 public:

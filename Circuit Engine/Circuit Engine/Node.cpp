@@ -38,6 +38,16 @@ Node::~Node()
 	GLOBAL_ID_COUNTER--;
 }
 
+void Device::setProperty(std::string name, complex val)
+{
+	properties[name] = val;
+}
+
+complex Device::getProperty(std::string name)
+{
+	return properties[name];
+}
+
 void Node::render(SDL_Renderer* r)
 {
 	MVector center = junctions[0]->getGlobalPosition();
@@ -300,7 +310,7 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 
 		if (device->deviceType == 1 && !forced) //Resistor
 		{
-			complex coef = 1.0 / (device->value);
+			complex coef = 1.0 / (device->getProperty("resistance"));
 
 			equations[0][id] += coef;
 			equations[0][otherNode->id] += -coef;
@@ -316,7 +326,7 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 
 			if (terminal == device->terminals[0]) //T0 - T1 = - V or //T1 - T0 = V
 			{
-				equations[index][solver->cols - 1] = -device->value;
+				equations[index][solver->cols - 1] = -device->getProperty("voltage");
 			}
 			else
 			{

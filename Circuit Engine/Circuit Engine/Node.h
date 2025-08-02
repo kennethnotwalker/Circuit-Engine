@@ -41,6 +41,8 @@ class Node
 
 class Device
 {
+private:
+	map<std::string, complex> properties;
 public:
 	Terminal* getTerminal(int index);
 	int id = -1;
@@ -60,6 +62,10 @@ public:
 	void stepUpdate(double step);
 
 	void render(SDL_Renderer* r);
+
+	void setProperty(std::string name, complex val);
+
+	complex getProperty(std::string name);
 
 	
 };

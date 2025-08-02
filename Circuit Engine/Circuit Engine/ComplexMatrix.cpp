@@ -210,13 +210,7 @@ bool ComplexMatrix::linearCombinationExists(complex* rowVector)
 		
 		bool re_tolerance = abs(abs(re_cosangle) - 1) < 0.00001;
 		bool im_tolerance = abs(abs(im_cosangle) - 1) < 0.00001;
-		if (!im_tolerance)
-		{
-			im_rowMVector.print();
-			im_currentVector.print();
-			cout << im_cosangle << endl;
-			cout << "failed" << endl;
-		}
+
 		if (re_tolerance && im_tolerance) { return true; }
 	}
 	return false;

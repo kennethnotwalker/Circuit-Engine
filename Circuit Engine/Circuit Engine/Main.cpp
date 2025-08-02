@@ -149,9 +149,7 @@ int main(void)
 		KEYSHELD[i] = false;
 	}
 
-	complex a = 5;
-
-	a += complex(0.1, 7);
+	complex a = 3 + 5*_i;
 
 	cout << a << endl;
 
@@ -170,12 +168,12 @@ int main(void)
 
 	//load devices
 	Device* g = new Device(MVector(2, 640.0, 400.0), 0, 1, "symbol_G", imageLoader); g->rotation = 180;
-	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "symbol_V", imageLoader); v->value = 10;
-	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r->rotation = 90; r->value = 10;
-	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "symbol_R", imageLoader); r2->rotation = 90; r2->value = 5;
-	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r3->rotation = 0; r3->value = 13;
+	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "symbol_V", imageLoader); v->setProperty("voltage", 10 + 7 * _i);
+	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r->rotation = 90; r->setProperty("resistance", 5);
+	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "symbol_R", imageLoader); r2->rotation = 90; r2->setProperty("resistance", 10);
+	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r3->rotation = 0; r3->setProperty("resistance", 15);
 	Device* g2 = new Device(r3->position + MVector(2, 0.0, -100.0), 0, 1, "symbol_G", imageLoader); g2->rotation = 0;
-	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "symbol_V", imageLoader); v2->value = 0.1;
+	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "symbol_V", imageLoader); v2->setProperty("voltage", 15);
 
 	connectJunction(g->terminals[0], v->terminals[0]);
 	connectJunction(v->terminals[1], r->terminals[0]);

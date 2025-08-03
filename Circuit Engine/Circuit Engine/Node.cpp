@@ -40,12 +40,22 @@ Node::~Node()
 
 void Device::setProperty(std::string name, complex val)
 {
+	if (hasProperty[name] == false)
+	{
+		propertyList.push_back(name);
+	}
 	properties[name] = val;
+	hasProperty[name] = true;
 }
 
 complex Device::getProperty(std::string name)
 {
 	return properties[name];
+}
+
+complex* Device::getPropertyReference(std::string name)
+{
+	return &properties[name];
 }
 
 void Node::render(SDL_Renderer* r)
@@ -184,30 +194,6 @@ void Device::render(SDL_Renderer* r)
 	TTF_Font* calibri = TTF_OpenFont("calibri-regular.ttf", 18);
 
 	SDL_Color green = { 255, 0, 0 };
-
-	std::string s_voltage = std::to_string(value.real);
-	int digits = 1 + log10(value.real);
-	if (digits < 1) { digits = 1; }
-	int decimals = 2;
-	int maxlen = digits + 1 + decimals;
-	if (value.real < 0)
-	{
-		maxlen += 1;
-	}
-	if (maxlen > s_voltage.size())
-	{
-		maxlen = s_voltage.size();
-	}
-	s_voltage = s_voltage.substr(0, maxlen);
-
-	SDL_Surface* textMessage = TTF_RenderText_Solid(calibri, s_voltage.c_str(), s_voltage.size(), green);
-	SDL_Texture* tex = SDL_CreateTextureFromSurface(r, textMessage);
-	SDL_FRect textRect = { position[0] - textMessage->w / 2, position[1] - textMessage->h / 2, textMessage->w, textMessage->h };
-
-	SDL_RenderTexture(r, tex, NULL, &textRect);
-
-	SDL_DestroyTexture(tex);
-	SDL_DestroySurface(textMessage);
 }
 
 Terminal* Device::getTerminal(int index)
@@ -330,7 +316,7 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 			}
 			else
 			{
-				equations[index][solver->cols - 1] = device->value;
+				equations[index][solver->cols - 1] = device->getProperty("voltage");
 			}
 			
 			otherNode->generateEquations(solver, equations, addedNodes, forced);

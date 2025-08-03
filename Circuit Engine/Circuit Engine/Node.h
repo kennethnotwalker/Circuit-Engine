@@ -41,9 +41,10 @@ class Node
 
 class Device
 {
-private:
-	map<std::string, complex> properties;
 public:
+	vector<std::string> propertyList;
+	map<std::string, complex> properties;
+	map<std::string, bool> hasProperty;
 	Terminal* getTerminal(int index);
 	int id = -1;
 	int deviceType = 0; //0 - Ground, 1 - Resistor, 2 - Voltage Source, 3 - Current Source
@@ -66,6 +67,7 @@ public:
 	void setProperty(std::string name, complex val);
 
 	complex getProperty(std::string name);
+	complex* getPropertyReference(std::string name);
 
 	
 };

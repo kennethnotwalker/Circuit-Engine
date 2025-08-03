@@ -48,6 +48,8 @@ bool mouseDown, mouseJustPressed, mouseJustReleased = false;
 
 MVector heldPosition = MVector(2, 0, 0);
 
+Device* selectedDevice = nullptr;
+
 void process(bool& running, SDL_Renderer* r)
 {
 	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_SPACE])
@@ -81,6 +83,30 @@ void process(bool& running, SDL_Renderer* r)
 		else
 		{
 			delete wire;
+		}
+	}
+	if (true)
+	{
+		//cout << "checking!" << endl;
+		for (int i = 0; i < devices.size(); i++)
+		{
+			Device* device = devices[i];
+			double _w = 100;
+			double _h = _w*device->texture->h/device->texture->w;
+			double _a = device->rotation*3.1415926535/180.0;
+			//rotate
+			double w = abs(_w * cos(_a)) + abs(_h * sin(_a));
+			double h = abs(_w * sin(_a)) + abs(_h * cos(_a));
+
+			SDL_FRect selectionRect = { (float)(device->position[0] - w / 2),(float)(device->position[1] - h / 2), w, h };
+			bool inX = mouseX > selectionRect.x && mouseX < selectionRect.x + selectionRect.w;
+			bool inY = mouseY > selectionRect.y && mouseY < selectionRect.y + selectionRect.h;		
+			
+			if (inX && inY && mouseJustPressed)
+			{
+				selectedDevice = device;
+				break;
+			}
 		}
 	}
 
@@ -364,30 +390,24 @@ int main(void)
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 
-		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);
-
 		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
 		{
 			static float f = 0.0f;
 			static int counter = 0;
 
-			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-			ImGui::Checkbox("Another Window", &show_another_window);
-
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-				counter++;
-			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+			ImGui::Begin("Properties");                          // Create a window called "Hello, world!" and append into it.
+			if (selectedDevice != nullptr) {
+				for (int p = 0; p < selectedDevice->propertyList.size(); p++) {
+					std::string propertyName = selectedDevice->propertyList[p];
+					//ImGui::Text(propertyName.data());    
+					complex* complexRef = selectedDevice->getPropertyReference(propertyName);
+					double* propertyRef = &(complexRef->real);
+					double pmin = 0.0;
+					double pmax = 100.0;
+					ImGui::SliderScalar(propertyName.data(), ImGuiDataType_Double, propertyRef, &pmin, &pmax);
+				}
+				
+			}
 			ImGui::End();
 		}
 

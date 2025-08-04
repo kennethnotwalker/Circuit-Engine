@@ -17,6 +17,18 @@ int GLOBAL_ID_COUNTER = 0;
 std::vector<Node*> nodeList;
 std::vector<Junction*> junctionList;
 
+MVector SNAP_SIZE(2, 50.0, 50.0);
+
+MVector nodeSnap(MVector in)
+{
+	double x = in[0] / SNAP_SIZE[0];
+	double y = in[1] / SNAP_SIZE[1];
+	x = round(x) * SNAP_SIZE[0];
+	y = round(y) * SNAP_SIZE[1];
+
+	return MVector(2, x, y);
+}
+
 Node::Node()
 {
 	id = GLOBAL_ID_COUNTER;
@@ -36,6 +48,19 @@ Node::~Node()
 		}
 	}
 	GLOBAL_ID_COUNTER--;
+}
+
+SDL_FRect Device::getSelectionRect()
+{
+	double _w = 100;
+	double _h = _w * texture->h / texture->w;
+	double _a = rotation * 3.1415926535 / 180.0;
+	//rotate
+	double w = abs(_w * cos(_a)) + abs(_h * sin(_a));
+	double h = abs(_w * sin(_a)) + abs(_h * cos(_a));
+
+	SDL_FRect selectionRect = { (float)(position[0] - w / 2),(float)(position[1] - h / 2), w, h };
+	return selectionRect;
 }
 
 void Device::setProperty(std::string name, complex val)
@@ -111,6 +136,7 @@ void Node::render(SDL_Renderer* r)
 
 	SDL_DestroyTexture(tex);
 	SDL_DestroySurface(textMessage);
+	TTF_CloseFont(calibri);
 	
 }
 
@@ -145,7 +171,7 @@ Device::Device(MVector _pos, int type, int terminals, std::string textureAlias, 
 
 void Device::init(MVector _pos)
 {
-	position = _pos;
+	position = nodeSnap(_pos);
 	for (int connectionIndex = 0; connectionIndex < offsets.size(); connectionIndex++)
 	{
 		Node* newNode = new Node();
@@ -190,10 +216,6 @@ void Device::render(SDL_Renderer* r)
 	SDL_FRect texRect = { (float)(position[0] - w/2),(float)(position[1] - h/2), w, h};
 
 	SDL_RenderTextureRotated(r, texture, NULL, &texRect, rotation, NULL, SDL_FLIP_NONE);
-
-	TTF_Font* calibri = TTF_OpenFont("calibri-regular.ttf", 18);
-
-	SDL_Color green = { 255, 0, 0 };
 }
 
 Terminal* Device::getTerminal(int index)

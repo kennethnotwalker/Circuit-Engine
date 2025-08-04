@@ -11,6 +11,8 @@
 #include "SDL3_ttf/SDL_ttf.h"
 #include "ImageLoader.h"
 #include "Complex.h"
+#include "DevicePreset.h"
+#include "StateHandler.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -48,65 +50,109 @@ bool mouseDown, mouseJustPressed, mouseJustReleased = false;
 
 MVector heldPosition = MVector(2, 0, 0);
 
-Device* selectedDevice = nullptr;
+StateHandler state;
+DeviceLibrary deviceLib;
 
-void process(bool& running, SDL_Renderer* r)
+void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 {
 	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_SPACE])
 	{
 		simulating = !simulating;
+	}
+
+	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_W])
+	{
+		state.mode = state.MODE_PLACE;
+		state.preset.baseType = -1;
+		state.selectedDevice = nullptr;
+	}
+
+	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_ESCAPE])
+	{
+		state.mode = state.MODE_SELECT;
 	}
 	float mouseX, mouseY = 0;
 
 	SDL_GetMouseState(&mouseX, &mouseY);
 
 	MVector mousePosition(2, mouseX, mouseY);
-	if (mouseJustPressed)
+	
+	
+	if (!io.WantCaptureMouse)
 	{
-		heldPosition = mousePosition;
-	}
-	if (mouseDown && false)
-	{
-		SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-		SDL_FRect rect = { mouseX - 5, mouseY - 5, 10, 10 };
+		if (state.mode == state.MODE_PLACE && state.preset.baseType == -1)
+		{
+			if (mouseJustPressed)
+			{
+				heldPosition = nodeSnap(mousePosition);
+			}
+			if (mouseDown)
+			{
+				SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+				SDL_FRect rect = { mouseX - 5, mouseY - 5, 10, 10 };
 
-		MVector projectedPos = Wire::snap(heldPosition, mousePosition);
-		SDL_RenderLine(r, heldPosition[0], heldPosition[1], projectedPos[0], projectedPos[1]);
-	}
-	if (mouseJustReleased && false)
-	{
-		Wire* wire = new Wire(heldPosition, Wire::snap(heldPosition, mousePosition));
-		if (wire->connected)
-		{
-			wires.push_back(wire);
+				MVector projectedPos = nodeSnap(mousePosition);
+				SDL_RenderLine(r, heldPosition[0], heldPosition[1], projectedPos[0], projectedPos[1]);
+			}
+			if (mouseJustReleased)
+			{
+				Wire* wire = new Wire(heldPosition, nodeSnap(mousePosition));
+				if (wire->connected)
+				{
+					wires.push_back(wire);
+				}
+				else
+				{
+					delete wire;
+				}
+			}
 		}
-		else
-		{
-			delete wire;
-		}
-	}
-	if (true)
-	{
 		//cout << "checking!" << endl;
+		bool deviceHasBeenSelected = false;
 		for (int i = 0; i < devices.size(); i++)
 		{
 			Device* device = devices[i];
-			double _w = 100;
-			double _h = _w*device->texture->h/device->texture->w;
-			double _a = device->rotation*3.1415926535/180.0;
-			//rotate
-			double w = abs(_w * cos(_a)) + abs(_h * sin(_a));
-			double h = abs(_w * sin(_a)) + abs(_h * cos(_a));
+			SDL_FRect selectionRect = device->getSelectionRect();
 
-			SDL_FRect selectionRect = { (float)(device->position[0] - w / 2),(float)(device->position[1] - h / 2), w, h };
 			bool inX = mouseX > selectionRect.x && mouseX < selectionRect.x + selectionRect.w;
 			bool inY = mouseY > selectionRect.y && mouseY < selectionRect.y + selectionRect.h;		
 			
-			if (inX && inY && mouseJustPressed)
+			if (inX && inY && state.mode == state.MODE_MOVE && device == state.selectedDevice)
 			{
-				selectedDevice = device;
+				if (mouseJustPressed)
+				{
+					state.dragging = true;
+				}
+				else if(mouseJustReleased && state.dragging)
+				{
+					state.dragging = false;
+				}
+			}
+
+			if (!state.dragging && inX && inY && mouseJustPressed && (state.mode == state.MODE_SELECT || state.mode == state.MODE_MOVE))
+			{
+				state.selectedDevice = device;
+				deviceHasBeenSelected = true;
+				state.mode = state.MODE_MOVE;
 				break;
 			}
+			else if (inX && inY && !mouseJustPressed)
+			{
+				SDL_SetRenderDrawColor(r, 255, 0, 0, 255);
+				SDL_RenderRect(r, &selectionRect);
+				break;
+			}
+		}
+
+		if (state.mode == state.MODE_MOVE && state.dragging && state.selectedDevice != nullptr)
+		{
+			state.selectedDevice->position = nodeSnap(mousePosition);
+		}
+
+		if (mouseJustPressed && state.mode == state.MODE_MOVE && !state.dragging && !deviceHasBeenSelected)
+		{
+			state.selectedDevice = nullptr;
+			state.mode = state.MODE_SELECT;
 		}
 	}
 
@@ -172,6 +218,17 @@ void process(bool& running, SDL_Renderer* r)
 	for (int d = 0; d < devices.size(); d++)
 	{
 		devices[d]->render(r);
+
+		if (state.selectedDevice == devices[d])
+		{
+			SDL_FRect selectionRect = devices[d]->getSelectionRect();
+			SDL_SetRenderDrawColor(r, 150, 255, 150, 50);
+			if (state.dragging) { SDL_SetRenderDrawColor(r, 150, 255, 255, 50); }
+			SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_ADD);
+			SDL_RenderFillRect(r, &selectionRect);
+			SDL_SetRenderDrawColor(r, 0, 255, 0, 255);
+			SDL_RenderRect(r, &selectionRect);
+		}
 	}
 
 	for (int n = 0; n < nodes.size(); n++)
@@ -187,18 +244,25 @@ void process(bool& running, SDL_Renderer* r)
 void loadDevices(SDL_Renderer* renderer)
 {
 	//load images
-	imageLoader.loadImage(renderer, "symbol_R", "imgs/resistor.png");
-	imageLoader.loadImage(renderer, "symbol_V", "imgs/vsource.png");
-	imageLoader.loadImage(renderer, "symbol_G", "imgs/ground.png");
+
+	for (int i = 0; i < deviceLib.presets.size(); i++)
+	{
+		DevicePreset preset = deviceLib.presets[i];
+		imageLoader.loadImage(renderer, preset.name, preset.imgPath);
+
+		//imageLoader.loadImage(renderer, "symbol_R", "imgs/resistor.png");
+		//imageLoader.loadImage(renderer, "symbol_V", "imgs/vsource.png");
+		//imageLoader.loadImage(renderer, "symbol_G", "imgs/ground.png");
+	}
 
 	//load devices
-	Device* g = new Device(MVector(2, 640.0, 400.0), 0, 1, "symbol_G", imageLoader); g->rotation = 180;
-	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "symbol_V", imageLoader); v->setProperty("voltage", 10 + 7 * _i);
-	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r->rotation = 90; r->setProperty("resistance", 5);
-	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "symbol_R", imageLoader); r2->rotation = 90; r2->setProperty("resistance", 10);
-	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "symbol_R", imageLoader); r3->rotation = 0; r3->setProperty("resistance", 15);
-	Device* g2 = new Device(r3->position + MVector(2, 0.0, -100.0), 0, 1, "symbol_G", imageLoader); g2->rotation = 0;
-	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "symbol_V", imageLoader); v2->setProperty("voltage", 15);
+	Device* g = new Device(MVector(2, 640.0, 400.0), 0, 1, "Ground", imageLoader); g->rotation = 180;
+	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "Generic Voltage Source", imageLoader); v->setProperty("voltage", 10 + 7 * _i);
+	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "Resistor", imageLoader); r->rotation = 90; r->setProperty("resistance", 5);
+	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "Resistor", imageLoader); r2->rotation = 90; r2->setProperty("resistance", 10);
+	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "Resistor", imageLoader); r3->rotation = 0; r3->setProperty("resistance", 15);
+	Device* g2 = new Device(r3->position + MVector(2, 0.0, -100.0), 0, 1, "Ground", imageLoader); g2->rotation = 0;
+	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "Generic Voltage Source", imageLoader); v2->setProperty("voltage", 15);
 
 	connectJunction(g->terminals[0], v->terminals[0]);
 	connectJunction(v->terminals[1], r->terminals[0]);
@@ -238,7 +302,7 @@ int main(void)
 	TTF_Init();
 	bool global_running = true;
 
-	SDL_Window* window = SDL_CreateWindow("Circuit Engine 2025", 1280, 720, 0);
+	SDL_Window* window = SDL_CreateWindow("Circuit Engine 2025", 1600, 900, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 
 	// Setup SDL
@@ -390,26 +454,45 @@ int main(void)
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 
-		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-		{
-			static float f = 0.0f;
-			static int counter = 0;
-
-			ImGui::Begin("Properties");                          // Create a window called "Hello, world!" and append into it.
-			if (selectedDevice != nullptr) {
-				for (int p = 0; p < selectedDevice->propertyList.size(); p++) {
-					std::string propertyName = selectedDevice->propertyList[p];
-					//ImGui::Text(propertyName.data());    
-					complex* complexRef = selectedDevice->getPropertyReference(propertyName);
-					double* propertyRef = &(complexRef->real);
-					double pmin = 0.0;
-					double pmax = 100.0;
-					ImGui::SliderScalar(propertyName.data(), ImGuiDataType_Double, propertyRef, &pmin, &pmax);
-				}
-				
+		                          // Create a window called "Hello, world!" and append into it.
+		if (state.selectedDevice != nullptr) {
+			ImGui::Begin("Properties");
+			for (int p = 0; p < state.selectedDevice->propertyList.size(); p++) {
+				std::string propertyName = state.selectedDevice->propertyList[p];
+				//ImGui::Text(propertyName.data());    
+				complex* complexRef = state.selectedDevice->getPropertyReference(propertyName);
+				double* propertyRef = &(complexRef->real);
+				double pmin = 0.0;
+				double pmax = 100.0;
+				ImGui::InputDouble(propertyName.data(), propertyRef, 1, 100);
 			}
+
 			ImGui::End();
+				
 		}
+		
+
+		ImGui::Begin("Global");
+
+		ImGui::Checkbox("Simulate", &simulating);
+
+		ImGui::End();
+
+		ImGui::Begin("Debug");
+
+		ImGui::Checkbox("Dragging", &state.dragging);
+		ImGui::InputInt("State", (int*)&state.mode);
+
+		ImGui::End();
+
+		ImGui::Begin("Assets");
+		for (int i = 0; i < deviceLib.presets.size(); i++)
+		{
+			DevicePreset preset = deviceLib.presets[i];
+			ImGui::Button(preset.name.c_str(), ImVec2(320, 32));
+		}
+		ImGui::End();
+		
 
 		// 3. Show another simple window.
 		if (show_another_window)
@@ -429,7 +512,7 @@ int main(void)
 		SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
 		SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		SDL_RenderClear(renderer);
-		process(global_running, renderer);
+		process(global_running, renderer, io);
 		ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
 		SDL_RenderPresent(renderer);
 	}

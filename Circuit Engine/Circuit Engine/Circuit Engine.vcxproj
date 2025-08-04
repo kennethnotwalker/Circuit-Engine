@@ -108,6 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +136,7 @@
   <ItemGroup>
     <ClCompile Include="Complex.cpp" />
     <ClCompile Include="ComplexMatrix.cpp" />
+    <ClCompile Include="DevicePreset.cpp" />
     <ClCompile Include="ImageLoader.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MathVector.cpp" />
@@ -144,9 +146,11 @@
   <ItemGroup>
     <ClInclude Include="Complex.h" />
     <ClInclude Include="ComplexMatrix.h" />
+    <ClInclude Include="DevicePreset.h" />
     <ClInclude Include="ImageLoader.h" />
     <ClInclude Include="MathVector.h" />
     <ClInclude Include="Node.h" />
+    <ClInclude Include="StateHandler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -69,6 +69,8 @@ public:
 	complex getProperty(std::string name);
 	complex* getPropertyReference(std::string name);
 
+	SDL_FRect getSelectionRect();
+
 	
 };
 
@@ -137,3 +139,5 @@ Node* getNodeByID(int id);
 
 void addEmptyEquation(ComplexMatrix* solver, std::vector<complex*>& equations);
 void resetEquation(ComplexMatrix* solver, complex* equation);
+
+MVector nodeSnap(MVector in);

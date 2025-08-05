@@ -7,6 +7,7 @@
 #include "MathVector.h"
 #include <vector>
 #include <string>
+#include <functional>
 #include "ImageLoader.h"
 #include "ComplexMatrix.h"
 
@@ -23,6 +24,7 @@ struct DevicePreset
 	int baseType;
 	int terminals;
 	vector<string> properties;
+	vector<string> updateFunctions;
 	string imgPath;
 };
 
@@ -43,7 +45,19 @@ class Node
 			return MVector(2, x, y);
 		}
 
+		bool isGrounded();
 		void generateEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced);
+		void generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced);
+		void equationGenerator(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced, int generatorIndex)
+		{
+			switch(generatorIndex)
+			{
+				case 0:
+					generateEquations(solver, equations, addedNodes, forced);
+				case 1:
+					generateCurrentEquations(solver, equations, addedNodes, forced);
+			}
+		}
 
 		void render(SDL_Renderer* r);
 };
@@ -54,6 +68,7 @@ class Device
 public:
 	vector<std::string> propertyList;
 	map<std::string, complex> properties;
+	map<std::string, vector<complex>> history; //each index = 1 time step
 	map<std::string, bool> hasProperty;
 	Terminal* getTerminal(int index);
 	int id = -1;
@@ -76,6 +91,11 @@ public:
 	void render(SDL_Renderer* r);
 
 	void setProperty(std::string name, complex val);
+
+	void storeProperties();
+
+	void resetCurrentCalculations();
+	void calculateCurrent();
 
 	complex getProperty(std::string name);
 	complex* getPropertyReference(std::string name);
@@ -124,6 +144,9 @@ public:
 	Device* device;
 	
 	int terminalIndex;
+	bool foundCurrent = false;
+	int id = 0;
+	complex current; //current (A) going into terminal
 	
 
 	Terminal(Device* _device, Node* _node, int _termIndex, MVector _pos) : Junction(_pos)
@@ -137,6 +160,7 @@ public:
 
 	Terminal* getOtherTerminal();
 	MVector getGlobalPosition() override;
+	complex getCurrent(); //calculates current going in
 
 };
 
@@ -147,6 +171,7 @@ std::vector<Node*> getNodeList();
 std::vector<Junction*> getJunctionList();
 
 Node* getNodeByID(int id);
+Terminal* getTerminalByID(int id);
 
 void addEmptyEquation(ComplexMatrix* solver, std::vector<complex*>& equations);
 void resetEquation(ComplexMatrix* solver, complex* equation);
@@ -155,3 +180,4 @@ MVector nodeSnap(MVector in);
 
 void displayText(std::string text, MVector center, SDL_Renderer* r);
 void displayNumber(double num, MVector center, SDL_Renderer* r);
+void calculateTerminalCurrents(vector<Node*>& nodes);

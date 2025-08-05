@@ -5,6 +5,7 @@
 #include <filesystem> 
 #include <iostream>
 #include <fstream>
+#include "Constants.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -35,6 +36,7 @@ DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 	int _terminals;
 	string _imgpath;
 	vector<string> props;
+	vector<string> eqs;
 
 
 	ifstream presetIn;
@@ -72,10 +74,17 @@ DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 		{
 			_imgpath = string(line);
 		}
-		else
+		else if(string(line).rfind("property: ") == 0)
 		{
 			string propstring(line);
+			propstring = propstring.substr(10);
 			props.push_back(propstring);
+		}
+		else if (string(line).rfind("equation: ") == 0)
+		{
+			string eqstring(line);
+			eqstring = eqstring.substr(10);
+			eqs.push_back(eqstring);
 		}
 
 		lineidx++;
@@ -83,5 +92,5 @@ DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 	presetIn.close();
 
 
-	return { _name, _cat, _type, _terminals, props, _imgpath};
+	return { _name, _cat, _type, _terminals, props, eqs, _imgpath};
 }

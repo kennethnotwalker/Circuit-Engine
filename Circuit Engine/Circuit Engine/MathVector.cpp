@@ -1,6 +1,7 @@
 #include "MathVector.h"
 #include <iostream>
 #include "Complex.h"
+#include "Constants.h"
 
 using namespace std;
 
@@ -148,7 +149,7 @@ double MVector::angleBetween(MVector A, MVector B)
 
 bool MVector::isZeroVector(double* nums, int _size)
 {
-	double tolerance = 0.00000001;
+	double tolerance = ERROR_MARGIN;
 	for (int i = 0; i < _size; i++)
 	{
 		if (abs(nums[i]) > tolerance)
@@ -161,7 +162,7 @@ bool MVector::isZeroVector(double* nums, int _size)
 
 bool MVector::isComplexZeroVector(complex* nums, int _size)
 {
-	double tolerance = 0.00000001;
+	double tolerance = ERROR_MARGIN;
 	for (int i = 0; i < _size; i++)
 	{
 		if (abs(nums[i]) > tolerance)
@@ -327,8 +328,8 @@ Matrix* Matrix::RREF()
 	for (int sourceRow = 0; sourceRow < rows; sourceRow++) //go through columns bounded by number of rows
 	{
 		int sourceCol = 0;
-		while (sourceCol < rows && m->get(sourceRow, sourceCol) == 0) { sourceCol++; }
-		if (m->get(sourceRow, sourceCol) == 0) { continue; }
+		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < 10e-10) { sourceCol++; }
+		if (abs(m->get(sourceRow, sourceCol)) < 10e-10) { continue; }
 		m->linearRowScale(sourceRow, 1.0 / m->get(sourceRow, sourceCol));
 		for (int r = 0; r < rows; r++)
 		{
@@ -370,7 +371,7 @@ bool Matrix::linearCombinationExists(double* rowVector)
 
 		double cosangle = MVector::cosBetween(rowMVector, currentVector);
 
-		if (abs(abs(cosangle) - 1) < 0.00001) { return true; }
+		if (abs(abs(cosangle) - 1) < ERROR_MARGIN) { return true; }
 	}
 	return false;
 }
@@ -414,4 +415,48 @@ bool Matrix::addLIRow(int row, double* rowVector) //return true if successful
 		return true;
 	}
 	return false;
+}
+
+int Matrix::countInRow(int _row, double value, int _end, double tolerance)
+{
+	int count = 0;
+	int end = _end;
+
+	if (end == -1)
+	{
+		end = cols;
+	}
+
+	for (int c = 0; c < end; c++)
+	{
+		if (abs(get(_row, c) - value) <= tolerance)
+		{
+			count++;
+		}
+	}
+	return count;
+}
+
+bool Matrix::isProperRREF()
+{
+	for (int r = 0; r < rows; r++)
+	{
+		if (countInRow(r, 1, cols - 1, 0) != 1 && countInRow(r, 0, cols, 0) != cols) { return false; }
+	}
+	return true;
+}
+
+bool Matrix::isZeroMatrix(double tolerance)
+{
+	for (int r = 0; r < rows; r++)
+	{
+		for (int c = 0; c < cols; c++)
+		{
+			if (abs(get(r, c)) > tolerance)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
 }

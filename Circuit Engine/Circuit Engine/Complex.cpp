@@ -2,6 +2,7 @@
 #include <math.h>
 #include <iostream>
 #include <string>
+#include "Constants.h"
 
 std::string str(complex m) {
     return std::to_string(m.real) + " + " + std::to_string(m.imaginary) + "i";

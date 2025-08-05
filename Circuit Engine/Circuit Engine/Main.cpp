@@ -13,6 +13,7 @@
 #include "Complex.h"
 #include "DevicePreset.h"
 #include "StateHandler.h"
+#include "Constants.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -52,6 +53,87 @@ MVector heldPosition = MVector(2, 0, 0);
 
 StateHandler state;
 DeviceLibrary deviceLib;
+
+void createAndSolveLinearSystem(vector<Node*>& nodes, int generatorIndex, int _rows)
+{
+	ComplexMatrix* solver = new ComplexMatrix(_rows, _rows + 1);
+
+	vector<int> equationIDs;
+	int equationsInSolver = 0;
+
+	for (int index = 0; index < nodes.size(); index++)
+	{
+		Node* node = nodes[index];
+		std::vector<complex*> equations;
+		bool forced = false;
+
+		node->equationGenerator(solver, equations, equationIDs, forced, generatorIndex);
+
+		for (int i = 0; i < equations.size(); i++)
+		{
+			if (equationsInSolver < solver->rows && solver->addLIRow(equationsInSolver, equations[i]))
+			{
+				equationsInSolver++;
+			}
+			delete[] equations[i];
+		}
+
+	}
+
+	ComplexMatrix* solution = solver->RREF();
+
+	if (generatorIndex == 0) {
+		for (int i = 0; i < solution->rows; i++)
+		{
+			int nonzeroes = 0;
+			int solutionIndex = 0;
+
+			for (int c = 0; c < solution->rows; c++)
+			{
+				if (abs(solution->get(i, c)) > ERROR_MARGIN)
+				{
+					nonzeroes++;
+				}
+				if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
+				{
+					solutionIndex = c;
+				}
+			}
+			if (nonzeroes == 1)
+			{
+				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
+				getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);
+			}
+		}
+	}
+	if (generatorIndex == 1) {
+		for (int i = 0; i < solution->rows; i++)
+		{
+			int nonzeroes = 0;
+			int solutionIndex = 0;
+
+			for (int c = 0; c < solution->rows; c++)
+			{
+				if (abs(solution->get(i, c)) > ERROR_MARGIN)
+				{
+					nonzeroes++;
+				}
+				if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
+				{
+					solutionIndex = c;
+				}
+			}
+			if (nonzeroes == 1)
+			{
+				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
+				getTerminalByID(solutionIndex)->current = solution->get(i, solution->cols - 1);
+			}
+		}
+	}
+
+	delete solution;
+	delete solver;
+}
 
 void placeAsset(DevicePreset& preset, MVector pos, double rot)
 {
@@ -202,66 +284,44 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 
 	std::vector<Node*> nodes = getNodeList();
 	if (simulating) {
-		ComplexMatrix* solver = new ComplexMatrix(nodes.size(), nodes.size() + 1);
-
-		vector<int> equationIDs;
-		int equationsInSolver = 0;
-
-		for (int index = 0; index < nodes.size(); index++)
+		
+		createAndSolveLinearSystem(nodes, 0, nodes.size());
+		//calculate current
+		//set terminal IDs
+		int termIDs = 0;
+		for (int d = 0; d < devices.size(); d++)
 		{
-			Node* node = nodes[index];
-			std::vector<complex*> equations;
-			bool forced = false;
-
-			node->generateEquations(solver, equations, equationIDs, forced);
-
-			for (int i = 0; i < equations.size(); i++)
+			Device* device = devices[d];
+			for (int termIndex = 0; termIndex < device->terminals.size(); termIndex++)
 			{
-				if (equationsInSolver < solver->rows && solver->addLIRow(equationsInSolver, equations[i]))
-				{
-					equationsInSolver++;
-				}
-				delete[] equations[i];
-			}
-
-		}
-
-		solver->print();
-
-		ComplexMatrix* solution = solver->RREF();
-		cout << "solved: " << endl;
-		solution->print();
-
-		for (int i = 0; i < solution->rows; i++)
-		{
-			int nonzeroes = 0;
-			int solutionIndex = 0;
-
-			for (int c = 0; c < solution->rows; c++)
-			{
-				if (abs(solution->get(i, c)) > 0.000001)
-				{
-					nonzeroes++;
-				}
-				if (abs(solution->get(i, c) - 1) < 0.00001)
-				{
-					solutionIndex = c;
-				}
-			}
-			if (nonzeroes == 1)
-			{
-				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
-				getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);
+				Terminal* terminal = device->terminals[termIndex];
+				terminal->id = termIDs;
+				terminal->foundCurrent = false;
+				termIDs++;
 			}
 		}
 
-		delete solution;
-		delete solver;
+		createAndSolveLinearSystem(nodes, 1, termIDs);
+
+		//run step updates
+		for (int d = 0; d < devices.size(); d++)
+		{
+			devices[d]->stepUpdate(10e-12);
+		}
+
+		for (int d = 0; d < devices.size(); d++)
+		{
+			devices[d]->storeProperties();
+		}
 	}
+
+	
 
 	for (int d = 0; d < devices.size(); d++)
 	{
+		devices[d]->calculateCurrent();
 		devices[d]->render(r);
+		
 
 		if (state.selectedDevice == devices[d])
 		{
@@ -279,6 +339,12 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 	{
 		Node* node = nodes[n];
 		node->render(r);
+	}
+
+	for (int d = 0; d < devices.size(); d++)
+	{
+		Device* device = devices[d];
+		device->setProperty("current", device->terminals[0]->current);
 	}
 
 	
@@ -312,10 +378,6 @@ int main(void)
 		KEYSUP[i] = false;
 		KEYSHELD[i] = false;
 	}
-
-	complex a = 3 + 5*_i;
-
-	cout << a << endl;
 
 	//imgui setup
 

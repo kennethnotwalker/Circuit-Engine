@@ -2,6 +2,8 @@
 #include <map>
 #include <string>
 #include <SDL3_image/SDL_image.h>
+#include "Constants.h"
+
 using namespace std;
 
 void ImageLoader::loadImage(SDL_Renderer* renderer, string alias, string path)

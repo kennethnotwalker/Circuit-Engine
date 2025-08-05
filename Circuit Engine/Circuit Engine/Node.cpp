@@ -11,6 +11,7 @@
 #include <cmath>
 #include <numbers>
 #include "ImageLoader.h"
+#include "Constants.h"
 
 
 int GLOBAL_ID_COUNTER = 0;
@@ -68,6 +69,7 @@ void Device::setProperty(std::string name, complex val)
 	if (hasProperty[name] == false)
 	{
 		propertyList.push_back(name);
+		history[name] = {};
 	}
 	properties[name] = val;
 	hasProperty[name] = true;
@@ -165,6 +167,13 @@ void Device::setOffsets()
 
 void Device::stepUpdate(double step)
 {
+	if (hasProperty["capacitance"] && getProperty("capacitance").real > 0)
+	{
+		complex dV = -terminals[0]->current / getProperty("capacitance");
+		complex V = getProperty("voltage") + dV*step;
+
+		setProperty("voltage", V);
+	}
 	return;
 }
 
@@ -184,6 +193,7 @@ Device::Device(MVector _pos, int type, int terminals, std::string textureAlias, 
 		
 	}
 	texture = loader.getImage(textureAlias);
+	setProperty("current", 0);
 	init(_pos);
 }
 
@@ -195,6 +205,14 @@ void Device::init(MVector _pos)
 		Node* newNode = new Node();
 		Terminal* newTerm = new Terminal(this, newNode, connectionIndex, offsets[connectionIndex]);
 		terminals.push_back(newTerm);
+	}
+}
+
+void Device::storeProperties()
+{
+	for (int i = 0; i < propertyList.size(); i++)
+	{
+		history[propertyList[i]].push_back(getProperty(propertyList[i]));
 	}
 }
 
@@ -242,6 +260,7 @@ void Device::render(SDL_Renderer* r)
 		double _h = 20;
 		SDL_FRect termRect = { terminals[i]->getGlobalPosition()[0] - _w / 2, terminals[i]->getGlobalPosition()[1] - _h / 2, _w, _h };
 		SDL_RenderRect(r, &termRect);
+		displayNumber(terminals[i]->id, terminals[i]->getGlobalPosition(), r);
 	}
 }
 
@@ -267,6 +286,22 @@ Node* getNodeByID(int id)
 		if (nodeList[i]->id == id)
 		{
 			return nodeList[i];
+		}
+	}
+	return nullptr;
+}
+
+Terminal* getTerminalByID(int id)
+{
+	for (int i = 0; i < nodeList.size(); i++)
+	{
+		Node* node = nodeList[i];
+		for (int t = 0; t < node->junctions.size(); t++)
+		{
+			Terminal* terminal = (Terminal*)node->junctions[t];
+			if (terminal->id == id) {
+				return terminal;
+			}
 		}
 	}
 	return nullptr;
@@ -321,6 +356,59 @@ void resetEquation(ComplexMatrix* solver, complex* equation)
 	}
 }
 
+void Device::resetCurrentCalculations()
+{
+	for (int t = 0; t < terminals.size(); t++)
+	{
+		terminals[t]->foundCurrent = false;
+	}
+}
+
+void Device::calculateCurrent()
+{
+	for (int t = 0; t < terminals.size(); t++)
+	{
+		terminals[t]->getCurrent();
+	}
+}
+
+complex Terminal::getCurrent()
+{
+	if (foundCurrent) { return current; }
+	complex val = 0;
+	foundCurrent = true;
+	
+	if (device->hasProperty["resistance"])
+	{
+		val = (node->voltage - getOtherTerminal()->node->voltage) / device->getProperty("resistance");
+	}
+	else
+	{
+		for (int i = 0; i < node->junctions.size(); i++)
+		{
+			Terminal* other = (Terminal*)node->junctions[i];
+			val -= other->getCurrent();
+		}
+	}
+
+
+	current = val;
+	return val;
+}
+
+bool Node::isGrounded()
+{
+	for (int t = 0; t < junctions.size(); t++)
+	{
+		Terminal* terminal = (Terminal*)junctions[t];
+		if (terminal->device->deviceType == 0) //terminal is grounded
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced)
 {
 	if (std::find(addedNodes.begin(), addedNodes.end(), id) != addedNodes.end()) { return; }
@@ -370,6 +458,56 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 			
 			otherNode->generateEquations(solver, equations, addedNodes, forced);
 		}
+	}
+	return;
+}
+
+void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced)
+{
+	if (std::find(addedNodes.begin(), addedNodes.end(), id) != addedNodes.end()) { return; }
+
+	addedNodes.push_back(id);
+	addEmptyEquation(solver, equations);
+
+	for (int otherIndex = 0; otherIndex < junctions.size(); otherIndex++)
+	{
+		Terminal* terminal = (Terminal*)junctions[otherIndex];
+		if (terminal->foundCurrent) { continue; }
+		terminal->foundCurrent = true;
+		Device* device = terminal->device;
+		if (device->hasProperty["resistance"])
+		{
+			complex current = (voltage - terminal->getOtherTerminal()->node->voltage) / device->getProperty("resistance");
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+			equations[index][terminal->id] = 1;
+			equations[index][solver->cols - 1] = current;
+		}
+		else if (device->terminals.size() == 2) //assume 0 resistance
+		{
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+			equations[index][terminal->id] = 1;
+			equations[index][terminal->getOtherTerminal()->id] = 1;
+		}
+		if (terminal->device->deviceType == 0)
+		{
+			vector<Node*> nodes;
+			for (int n = 0; n < nodes.size(); n++)
+			{
+				if (nodes[n]->isGrounded())
+				{
+					nodes[n]->generateCurrentEquations(solver, equations, addedNodes, forced);
+				}
+			}
+		}
+		else
+		{
+			equations[0][terminal->id] = 1;
+		}
+		
+
+		
 	}
 	return;
 }

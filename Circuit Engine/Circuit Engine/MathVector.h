@@ -60,6 +60,7 @@ public:
 	void linearRowScale(int row, double scale);
 
 	void zeroRow(int row);
+	bool isZeroMatrix(double tolerance = 0);
 
 	Matrix* getRow(int row);
 	Matrix* getCol(int col);
@@ -68,6 +69,9 @@ public:
 
 	bool rowExists(double* rowVector);
 	bool linearCombinationExists(double* rowVector);
+
+	int countInRow(int _row, double value, int _end = -1, double tolerance = 0);
+	bool isProperRREF();
 
 	void addRow();
 

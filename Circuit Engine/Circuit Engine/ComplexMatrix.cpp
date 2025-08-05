@@ -2,6 +2,7 @@
 #include "ComplexMatrix.h"
 #include "Complex.h"
 #include <iostream>
+#include "Constants.h"
 
 using namespace std;
 
@@ -160,8 +161,8 @@ ComplexMatrix* ComplexMatrix::RREF()
 	for (int sourceRow = 0; sourceRow < rows; sourceRow++) //go through columns bounded by number of rows
 	{
 		int sourceCol = 0;
-		while (sourceCol < rows && m->get(sourceRow, sourceCol) == 0) { sourceCol++; }
-		if (m->get(sourceRow, sourceCol) == 0) { continue; }
+		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < 10e-10) { sourceCol++; }
+		if (abs(m->get(sourceRow, sourceCol)) < 10e-10) { continue; }
 		m->linearRowScale(sourceRow, 1.0 / m->get(sourceRow, sourceCol));
 		for (int r = 0; r < rows; r++)
 		{
@@ -195,25 +196,36 @@ bool ComplexMatrix::rowExists(complex* rowVector)
 
 bool ComplexMatrix::linearCombinationExists(complex* rowVector)
 {
-	MVector re_rowMVector = MVector(rowVector, 0, cols);
-	MVector im_rowMVector = MVector(rowVector, 1, cols);
+	MVector reVector(rowVector, 0, cols);
+	MVector imVector(rowVector, 1, cols);
+	Matrix* realMatrix = new Matrix(cols, rows + 1);
+	Matrix* imaginaryMatrix = new Matrix(cols, rows + 1);
 
-	for (int r = 0; r < rows; r++)
+	for (int c = 0; c < cols; c++)
 	{
-		MVector re_currentVector = MVector(data[r], 0, cols);
-		MVector im_currentVector = MVector(data[r], 1, cols);
-
-		double re_cosangle = MVector::cosBetween(re_rowMVector, re_currentVector);
-		double im_cosangle = MVector::cosBetween(im_rowMVector, im_currentVector);
-
-
-		
-		bool re_tolerance = abs(abs(re_cosangle) - 1) < 0.00001;
-		bool im_tolerance = abs(abs(im_cosangle) - 1) < 0.00001;
-
-		if (re_tolerance && im_tolerance) { return true; }
+		for (int r = 0; r < rows; r++)
+		{
+			realMatrix->insert(c, r, get(r, c).real);
+			imaginaryMatrix->insert(c, r, get(r, c).imaginary);
+		}
+		realMatrix->insert(c, rows, rowVector[c].real);
+		imaginaryMatrix->insert(c, rows, rowVector[c].imaginary);
 	}
-	return false;
+
+	Matrix* reRREF = realMatrix->RREF();
+	Matrix* imRREF = imaginaryMatrix->RREF();
+
+	
+	
+	bool realLC = (realMatrix->isZeroMatrix() && reVector.magnitude() <= ERROR_MARGIN) || reRREF->isProperRREF();
+	bool imaginaryLC = (imaginaryMatrix->isZeroMatrix() && imVector.magnitude() <= ERROR_MARGIN) || imRREF->isProperRREF();
+
+	delete realMatrix;
+	delete imaginaryMatrix;
+	delete reRREF;
+	delete imRREF;
+
+	return realLC && imaginaryLC;
 }
 
 ComplexMatrix* ComplexMatrix::operator*(ComplexMatrix& rhs)
@@ -255,4 +267,30 @@ bool ComplexMatrix::addLIRow(int row, complex* rowVector) //return true if succe
 		return true;
 	}
 	return false;
+}
+
+Matrix* ComplexMatrix::getReal()
+{
+	Matrix* m = new Matrix(rows, cols);
+	for (int r = 0; r < rows; r++)
+	{
+		for (int c = 0; c < rows; c++)
+		{
+			m->insert(r, c, get(r, c).real);
+		}
+	}
+	return m;
+}
+
+Matrix* ComplexMatrix::getImaginary()
+{
+	Matrix* m = new Matrix(rows, cols);
+	for (int r = 0; r < rows; r++)
+	{
+		for (int c = 0; c < rows; c++)
+		{
+			m->insert(r, c, get(r, c).imaginary);
+		}
+	}
+	return m;
 }

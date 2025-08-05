@@ -44,4 +44,7 @@ public:
 
 	bool addLIRow(int row, complex* rowVector);
 
+	Matrix* getReal();
+	Matrix* getImaginary();
+
 };

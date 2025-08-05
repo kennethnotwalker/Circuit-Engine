@@ -1,5 +1,6 @@
 #include "Node.h"
 #include "vector"
+#include "Constants.h"
 
 Wire::Wire(MVector _from, MVector _to)
 {

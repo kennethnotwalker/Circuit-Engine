@@ -146,6 +146,7 @@
   <ItemGroup>
     <ClInclude Include="Complex.h" />
     <ClInclude Include="ComplexMatrix.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="DevicePreset.h" />
     <ClInclude Include="ImageLoader.h" />
     <ClInclude Include="MathVector.h" />

@@ -3,4 +3,4 @@ Power Supplies
 2
 2
 imgs/vsource.png
-voltage
+property: voltage

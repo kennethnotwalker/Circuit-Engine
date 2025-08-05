@@ -53,6 +53,26 @@ MVector heldPosition = MVector(2, 0, 0);
 StateHandler state;
 DeviceLibrary deviceLib;
 
+void placeAsset(DevicePreset& preset, MVector pos, double rot)
+{
+	Device* device = new Device(pos, preset, imageLoader);
+	device->rotation = rot;
+	for (int i = 0; i < preset.properties.size(); i++)
+	{
+		device->setProperty(preset.properties[i], 1);
+	}
+
+	devices.push_back(device);
+}
+
+void assetClicked(DevicePreset& preset)
+{
+	state.preset = preset;
+	state.mode = state.MODE_PLACE;
+	state.targetRotation = 0;
+}
+
+
 void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 {
 	if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_SPACE])
@@ -80,30 +100,54 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 	
 	if (!io.WantCaptureMouse)
 	{
-		if (state.mode == state.MODE_PLACE && state.preset.baseType == -1)
+		if (state.mode == state.MODE_PLACE)
 		{
-			if (mouseJustPressed)
-			{
-				heldPosition = nodeSnap(mousePosition);
-			}
-			if (mouseDown)
-			{
-				SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-				SDL_FRect rect = { mouseX - 5, mouseY - 5, 10, 10 };
-
-				MVector projectedPos = nodeSnap(mousePosition);
-				SDL_RenderLine(r, heldPosition[0], heldPosition[1], projectedPos[0], projectedPos[1]);
-			}
-			if (mouseJustReleased)
-			{
-				Wire* wire = new Wire(heldPosition, nodeSnap(mousePosition));
-				if (wire->connected)
+			if (state.preset.baseType == -1) {
+				if (mouseJustPressed)
 				{
-					wires.push_back(wire);
+					heldPosition = nodeSnap(mousePosition);
 				}
-				else
+				if (mouseDown)
 				{
-					delete wire;
+					SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+					SDL_FRect rect = { mouseX - 5, mouseY - 5, 10, 10 };
+
+					MVector projectedPos = nodeSnap(mousePosition);
+					SDL_RenderLine(r, heldPosition[0], heldPosition[1], projectedPos[0], projectedPos[1]);
+				}
+				if (mouseJustReleased)
+				{
+					Wire* wire = new Wire(heldPosition, nodeSnap(mousePosition));
+					if (wire->connected)
+					{
+						wires.push_back(wire);
+					}
+					else
+					{
+						delete wire;
+					}
+				}
+			}
+			else
+			{
+				SDL_Texture* preview = imageLoader.getImage(state.preset.name);
+				MVector previewPos = nodeSnap(mousePosition);
+				double h = 100;
+				double w = h * (preview->w) / (preview->h);
+				SDL_FRect prect = { previewPos[0] - w / 2, previewPos[1] - h / 2, w, h };
+
+				SDL_RenderTextureRotated(r, preview, NULL, &prect, state.targetRotation, NULL, SDL_FLIP_NONE);
+
+				if (KEYSDOWN[SDL_Scancode::SDL_SCANCODE_R])
+				{
+					state.targetRotation = (int)(state.targetRotation / 90.0) * 90.0;
+					state.targetRotation = ((int)(state.targetRotation + 90)) % 360;
+				}
+
+				if (mouseJustPressed)
+				{
+					placeAsset(state.preset, previewPos, state.targetRotation);
+					state.mode = state.MODE_SELECT;
 				}
 			}
 		}
@@ -256,29 +300,7 @@ void loadDevices(SDL_Renderer* renderer)
 	}
 
 	//load devices
-	Device* g = new Device(MVector(2, 640.0, 400.0), 0, 1, "Ground", imageLoader); g->rotation = 180;
-	Device* v = new Device(g->position + MVector(2, 0, -100.0), 2, 2, "Generic Voltage Source", imageLoader); v->setProperty("voltage", 10 + 7 * _i);
-	Device* r = new Device(v->position + MVector(2, 50.0, -50.0), 1, 2, "Resistor", imageLoader); r->rotation = 90; r->setProperty("resistance", 5);
-	Device* r2 = new Device(r->position + MVector(2, 100.0, 0.0), 1, 2, "Resistor", imageLoader); r2->rotation = 90; r2->setProperty("resistance", 10);
-	Device* r3 = new Device(r->position + MVector(2, 50.0, -50.0), 1, 2, "Resistor", imageLoader); r3->rotation = 0; r3->setProperty("resistance", 15);
-	Device* g2 = new Device(r3->position + MVector(2, 0.0, -100.0), 0, 1, "Ground", imageLoader); g2->rotation = 0;
-	Device* v2 = new Device(r2->position + MVector(2, 50.0, 50.0), 2, 2, "Generic Voltage Source", imageLoader); v2->setProperty("voltage", 15);
 
-	connectJunction(g->terminals[0], v->terminals[0]);
-	connectJunction(v->terminals[1], r->terminals[0]);
-	connectJunction(r->terminals[1], r2->terminals[0]);
-	connectJunction(r->terminals[1], r3->terminals[0]);
-	connectJunction(r3->terminals[1], g2->terminals[0]);
-	connectJunction(r2->terminals[1], v2->terminals[1]);
-	connectJunction(v2->terminals[0], g->terminals[0]);
-
-	devices.push_back((Device*)g);
-	devices.push_back((Device*)g2);
-	devices.push_back((Device*)v);
-	devices.push_back((Device*)v2);
-	devices.push_back((Device*)r);
-	devices.push_back((Device*)r2);
-	devices.push_back((Device*)r3);
 }
 
 
@@ -347,6 +369,7 @@ int main(void)
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
 	style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
@@ -476,31 +499,38 @@ int main(void)
 
 		ImGui::Checkbox("Simulate", &simulating);
 
-		ImGui::End();
-
-		ImGui::Begin("Debug");
+		ImGui::Separator();
 
 		ImGui::Checkbox("Dragging", &state.dragging);
 		ImGui::InputInt("State", (int*)&state.mode);
 
 		ImGui::End();
 
-		ImGui::Begin("Assets");
-		for (int i = 0; i < deviceLib.presets.size(); i++)
-		{
-			DevicePreset preset = deviceLib.presets[i];
-			ImGui::Button(preset.name.c_str(), ImVec2(320, 32));
-		}
-		ImGui::End();
-		
+		if (state.mode != state.MODE_PLACE) {
+			ImGui::Begin("Assets", nullptr, ImGuiWindowFlags_MenuBar);
+			if (ImGui::BeginMenuBar()) {
+				for (int catIndex = 0; catIndex < deviceLib.categories.size(); catIndex++)
+				{
+					std::string cat = deviceLib.categories[catIndex];
+					vector<DevicePreset>& presets = deviceLib.library[cat];
 
-		// 3. Show another simple window.
-		if (show_another_window)
-		{
-			ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-			ImGui::Text("Hello from another window!");
-			if (ImGui::Button("Close Me"))
-				show_another_window = false;
+					if (ImGui::BeginMenu(cat.c_str())) {
+						for (int i = 0; i < presets.size(); i++)
+						{
+							DevicePreset preset = presets[i];
+							SDL_Texture* tex = imageLoader.getImage(preset.name);
+							double w = 50.0;
+							double h = w * (tex->h / tex->w);
+							if (ImGui::ImageButton(preset.name.c_str(), (ImTextureID)(intptr_t)tex, ImVec2(w, h), ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 0.9)))
+							{
+								assetClicked(preset);
+							}
+						}
+						ImGui::EndMenu();
+					}
+				}
+				ImGui::EndMenuBar();
+			}
 			ImGui::End();
 		}
 

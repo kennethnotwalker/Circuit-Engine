@@ -16,6 +16,16 @@ class Device;
 class Junction;
 class Wire;
 
+struct DevicePreset
+{
+	string name;
+	string category;
+	int baseType;
+	int terminals;
+	vector<string> properties;
+	string imgPath;
+};
+
 class Node
 {
 	public:
@@ -56,6 +66,7 @@ public:
 	std::vector<MVector> offsets;
 
 	Device(MVector _pos, int type, int terminals, std::string textureAlias, ImageLoader& loader);
+	Device(MVector _pos, DevicePreset _preset, ImageLoader& loader) : Device(_pos, _preset.baseType, _preset.terminals, _preset.name, loader) {};
 
 	void init(MVector _pos);
 
@@ -141,3 +152,6 @@ void addEmptyEquation(ComplexMatrix* solver, std::vector<complex*>& equations);
 void resetEquation(ComplexMatrix* solver, complex* equation);
 
 MVector nodeSnap(MVector in);
+
+void displayText(std::string text, MVector center, SDL_Renderer* r);
+void displayNumber(double num, MVector center, SDL_Renderer* r);

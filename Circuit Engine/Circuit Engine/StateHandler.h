@@ -20,6 +20,7 @@ public:
 	DevicePreset preset;
 	Device* selectedDevice;
 	bool dragging;
+	double targetRotation = 0.0;
 
 	StateHandler() {
 		mode = MODE_SELECT;

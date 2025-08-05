@@ -16,14 +16,23 @@ DeviceLibrary::DeviceLibrary()
 	for (const auto& entry : fs::directory_iterator(presetDirectory))
 	{
 		cout << "loading " << entry.path() << endl;
-		presets.push_back(readPresetFile(entry.path()));
+
+		DevicePreset dev = readPresetFile(entry.path());
+		presets.push_back(dev);
+		string cat = dev.category;
+		
+		if (library.count(cat) == 0) { library[cat] = {}; categories.push_back(cat); }
+		library[cat].push_back(dev);
+
 	}
 }
 
 DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 {
 	string _name;
+	string _cat;
 	int _type;
+	int _terminals;
 	string _imgpath;
 	vector<string> props;
 
@@ -47,10 +56,19 @@ DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 		}
 		else if (lineidx == 1)
 		{
+			_cat = string(line);
+		}
+		else if (lineidx == 2)
+		{
 			string typestring(line);
 			_type = stoi(typestring);
 		}
-		else if (lineidx == 2)
+		else if (lineidx == 3)
+		{
+			string termstring(line);
+			_terminals = stoi(termstring);
+		}
+		else if (lineidx == 4)
 		{
 			_imgpath = string(line);
 		}
@@ -65,5 +83,5 @@ DevicePreset DeviceLibrary::readPresetFile(std::filesystem::path _path)
 	presetIn.close();
 
 
-	return { _name, _type, props, _imgpath};
+	return { _name, _cat, _type, _terminals, props, _imgpath};
 }

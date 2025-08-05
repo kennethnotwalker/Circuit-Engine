@@ -85,8 +85,18 @@ complex* Device::getPropertyReference(std::string name)
 
 void Node::render(SDL_Renderer* r)
 {
-	MVector center = junctions[0]->getGlobalPosition();
-	SDL_SetRenderDrawColor(r, (255.0/2)*(id%2), (255.0 / 3) * (id % 3), (255.0 / 4) * (id % 4), 255);
+	MVector center = MVector(2, 0, 0);
+	for (int termIndex = 0; termIndex < junctions.size(); termIndex++)
+	{
+		Terminal* other = (Terminal*)junctions[termIndex];
+
+		MVector pos = other->getGlobalPosition();
+		center = center + pos;
+	}
+
+	center = center * (1.0 / junctions.size());
+
+	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
 	for (int termIndex = 0; termIndex < junctions.size(); termIndex++) {
 
 		Terminal* other = (Terminal*)junctions[termIndex];
@@ -109,26 +119,35 @@ void Node::render(SDL_Renderer* r)
 
 			
 	}
+	displayNumber(voltage.real, center, r);
+}
+
+void displayNumber(double num, MVector center, SDL_Renderer* r)
+{
+	std::string s_num = std::to_string(num);
+	int digits = 1 + log10(num);
+	if (digits < 1) { digits = 1; }
+	int decimals = 2;
+	int maxlen = digits + 1 + decimals;
+	if (num < 0)
+	{
+		maxlen += 1;
+	}
+	if (maxlen > s_num.size())
+	{
+		maxlen = s_num.size();
+	}
+	s_num = s_num.substr(0, maxlen);
+	displayText(s_num, center, r);
+}
+
+void displayText(std::string text, MVector center, SDL_Renderer* r)
+{
 	TTF_Font* calibri = TTF_OpenFont("calibri-regular.ttf", 18);
 
 	SDL_Color green = { 0, 255, 0 };
 
-	std::string s_voltage = std::to_string(voltage.real);
-	int digits = 1 + log10(voltage.real);
-	if (digits < 1) { digits = 1; }
-	int decimals = 2;
-	int maxlen = digits + 1 + decimals;
-	if (voltage.real < 0)
-	{
-		maxlen += 1;
-	}
-	if (maxlen > s_voltage.size())
-	{
-		maxlen = s_voltage.size();
-	}
-	s_voltage = s_voltage.substr(0, maxlen);
-
-	SDL_Surface* textMessage = TTF_RenderText_Solid(calibri, s_voltage.c_str(), s_voltage.size(), green);
+	SDL_Surface* textMessage = TTF_RenderText_Solid(calibri, text.c_str(), text.size(), green);
 	SDL_Texture* tex = SDL_CreateTextureFromSurface(r, textMessage);
 	SDL_FRect textRect = { center[0] - textMessage->w / 2, center[1] - textMessage->h / 2, textMessage->w, textMessage->h };
 
@@ -137,7 +156,6 @@ void Node::render(SDL_Renderer* r)
 	SDL_DestroyTexture(tex);
 	SDL_DestroySurface(textMessage);
 	TTF_CloseFont(calibri);
-	
 }
 
 void Device::setOffsets()
@@ -216,6 +234,15 @@ void Device::render(SDL_Renderer* r)
 	SDL_FRect texRect = { (float)(position[0] - w/2),(float)(position[1] - h/2), w, h};
 
 	SDL_RenderTextureRotated(r, texture, NULL, &texRect, rotation, NULL, SDL_FLIP_NONE);
+
+	for (int i = 0; i < terminals.size(); i++)
+	{
+		SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+		double _w = 20;
+		double _h = 20;
+		SDL_FRect termRect = { terminals[i]->getGlobalPosition()[0] - _w / 2, terminals[i]->getGlobalPosition()[1] - _h / 2, _w, _h };
+		SDL_RenderRect(r, &termRect);
+	}
 }
 
 Terminal* Device::getTerminal(int index)

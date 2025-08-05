@@ -18,11 +18,11 @@ Wire::Wire(MVector _from, MVector _to)
 		for (int terminalIndex = 0; terminalIndex < node->junctions.size(); terminalIndex++)
 		{
 			Terminal* terminal = (Terminal*)node->junctions[terminalIndex];
-			if (MVector::distance(terminal->getGlobalPosition(), from) < 10 && fromJunc == nullptr)
+			if (MVector::distance(terminal->getGlobalPosition(), from) <= 1 && fromJunc == nullptr)
 			{
 				fromJunc = (Junction*)terminal;
 			}
-			if (MVector::distance(terminal->getGlobalPosition(), to) < 10 && toJunc == nullptr)
+			if (MVector::distance(terminal->getGlobalPosition(), to) <= 1 && toJunc == nullptr)
 			{
 				toJunc = (Junction*)terminal;
 			}

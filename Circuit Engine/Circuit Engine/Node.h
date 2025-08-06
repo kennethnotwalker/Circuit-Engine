@@ -181,3 +181,5 @@ MVector nodeSnap(MVector in);
 void displayText(std::string text, MVector center, SDL_Renderer* r);
 void displayNumber(double num, MVector center, SDL_Renderer* r);
 void calculateTerminalCurrents(vector<Node*>& nodes);
+void elapseTime(double t);
+double getElapsedTime();

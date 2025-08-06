@@ -4,3 +4,4 @@ Power Supplies
 2
 imgs/vsource.png
 property: voltage
+property: off_time

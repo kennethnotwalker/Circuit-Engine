@@ -15,6 +15,7 @@
 
 
 int GLOBAL_ID_COUNTER = 0;
+double timeElapsed = 0;
 std::vector<Node*> nodeList;
 std::vector<Junction*> junctionList;
 
@@ -174,6 +175,24 @@ void Device::stepUpdate(double step)
 
 		setProperty("voltage", V);
 	}
+
+	if (hasProperty["inductance"] && getProperty("inductance").real > 0 && history["current"].size() > 0)
+	{
+		complex dI = (getProperty("current") - history["current"][history["current"].size() - 1]) / step;
+		complex V = -getProperty("inductance")*dI;
+
+		complex I = getProperty("current");
+		if (abs(I) > 0) {
+			complex R = V / I;
+
+			setProperty("resistance", R);
+		}
+	}
+
+	if (hasProperty["off_time"] && getProperty("off_time").real > 0 && timeElapsed >= getProperty("off_time").real)
+	{
+		setProperty("voltage", 0);
+	}
 	return;
 }
 
@@ -260,7 +279,7 @@ void Device::render(SDL_Renderer* r)
 		double _h = 20;
 		SDL_FRect termRect = { terminals[i]->getGlobalPosition()[0] - _w / 2, terminals[i]->getGlobalPosition()[1] - _h / 2, _w, _h };
 		SDL_RenderRect(r, &termRect);
-		displayNumber(terminals[i]->id, terminals[i]->getGlobalPosition(), r);
+		//displayNumber(terminals[i]->id, terminals[i]->getGlobalPosition(), r);
 	}
 }
 
@@ -475,7 +494,7 @@ void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equ
 		if (terminal->foundCurrent) { continue; }
 		terminal->foundCurrent = true;
 		Device* device = terminal->device;
-		if (device->hasProperty["resistance"])
+		if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > 0)
 		{
 			complex current = (voltage - terminal->getOtherTerminal()->node->voltage) / device->getProperty("resistance");
 			addEmptyEquation(solver, equations);
@@ -510,4 +529,14 @@ void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equ
 		
 	}
 	return;
+}
+
+void elapseTime(double t)
+{
+	timeElapsed += t;
+}
+
+double getElapsedTime()
+{
+	return timeElapsed;
 }

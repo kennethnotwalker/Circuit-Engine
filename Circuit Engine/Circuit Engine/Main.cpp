@@ -141,7 +141,12 @@ void placeAsset(DevicePreset& preset, MVector pos, double rot)
 	device->rotation = rot;
 	for (int i = 0; i < preset.properties.size(); i++)
 	{
-		device->setProperty(preset.properties[i], 1);
+		double defaultValue = 1e-9;
+		if (preset.properties[i] == "voltage" || preset.properties[i] == "current" || preset.properties[i] == "off_time" || preset.properties[i] == "on_time")
+		{
+			defaultValue = 0;
+		}
+		device->setProperty(preset.properties[i], defaultValue);
 	}
 
 	devices.push_back(device);
@@ -304,22 +309,31 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 		createAndSolveLinearSystem(nodes, 1, termIDs);
 
 		//run step updates
+
 		for (int d = 0; d < devices.size(); d++)
 		{
-			devices[d]->stepUpdate(10e-12);
+			devices[d]->setProperty("current", devices[d]->terminals[0]->current);
+		}
+
+		for (int d = 0; d < devices.size(); d++)
+		{
+			devices[d]->stepUpdate(TIME_STEP);
 		}
 
 		for (int d = 0; d < devices.size(); d++)
 		{
 			devices[d]->storeProperties();
 		}
+
+		elapseTime(TIME_STEP);
 	}
+
+	displayNumber(getElapsedTime(), MVector(2, 100.0, 30.0), r);
 
 	
 
 	for (int d = 0; d < devices.size(); d++)
 	{
-		devices[d]->calculateCurrent();
 		devices[d]->render(r);
 		
 
@@ -344,7 +358,6 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 	for (int d = 0; d < devices.size(); d++)
 	{
 		Device* device = devices[d];
-		device->setProperty("current", device->terminals[0]->current);
 	}
 
 	
@@ -550,6 +563,16 @@ int main(void)
 				double pmin = 0.0;
 				double pmax = 100.0;
 				ImGui::InputDouble(propertyName.data(), propertyRef, 1, 100);
+
+				vector<complex> data = state.selectedDevice->history[propertyName];
+				if (data.size() > 0) {
+					vector<float> d_data;
+					for (int index = 0; index < data.size(); index++)
+					{
+						d_data.push_back((float)data[index].real);
+					}
+					ImGui::PlotLines((string("Graph: ") + propertyName).data(), d_data.data(), d_data.size());
+				}
 			}
 
 			ImGui::End();

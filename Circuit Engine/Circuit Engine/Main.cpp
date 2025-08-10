@@ -131,6 +131,10 @@ void createAndSolveLinearSystem(vector<Node*>& nodes, int generatorIndex, int _r
 		}
 	}
 
+	cout << "method" << endl;
+	solver->print();
+	solution->print();
+
 	delete solution;
 	delete solver;
 }
@@ -141,8 +145,8 @@ void placeAsset(DevicePreset& preset, MVector pos, double rot)
 	device->rotation = rot;
 	for (int i = 0; i < preset.properties.size(); i++)
 	{
-		double defaultValue = 1e-9;
-		if (preset.properties[i] == "voltage" || preset.properties[i] == "current" || preset.properties[i] == "off_time" || preset.properties[i] == "on_time")
+		double defaultValue = 1;
+		if (preset.properties[i] == "voltage" || preset.properties[i] == "current" || preset.properties[i] == "off_time" || preset.properties[i] == "off_voltage")
 		{
 			defaultValue = 0;
 		}

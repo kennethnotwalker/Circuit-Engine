@@ -3,5 +3,8 @@ Power Supplies
 2
 2
 imgs/vsource.png
-property: voltage
+property: on_voltage
+property: off_voltage
 property: off_time
+property: change_time
+property: voltage

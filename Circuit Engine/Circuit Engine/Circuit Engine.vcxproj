@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\imgui;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\imgui\backends;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\include;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\include;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\include;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\imgui;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\imgui\backends;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\include;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\include;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_ttf-3.1.0\include;D:\GitHub\CircuitEngine2025\Circuit-Engine\imgui\backends;D:\GitHub\CircuitEngine2025\Circuit-Engine\imgui;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_image-3.2.4\include;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\include;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_image-3.2.4\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -113,7 +113,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_image-3.2.4\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;C:\Users\Hammy\OneDrive\Documents\GitHub\Circuit-Engine\SDL3-3.2.18\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_ttf-3.1.0\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3_image-3.2.4\lib\x64;D:\GitHub\CircuitEngine2025\Circuit-Engine\SDL3-3.2.18\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL3.lib;SDL3_test.lib;SDL3_ttf.lib;SDL3_image.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

@@ -176,9 +176,9 @@ void Device::stepUpdate(double step)
 		setProperty("voltage", V);
 	}
 
-	if (hasProperty["inductance"] && getProperty("inductance").real > 0 && history["current"].size() > 0)
+	if (hasProperty["inductance"] && getProperty("inductance").real > 0 && history["current"].size() > 3)
 	{
-		complex dI = (getProperty("current") - history["current"][history["current"].size() - 1]) / step;
+		complex dI = (getProperty("current") - history["current"][history["current"].size() - 2]) / step;
 		complex V = -getProperty("inductance")*dI;
 
 		complex I = getProperty("current");
@@ -191,7 +191,20 @@ void Device::stepUpdate(double step)
 
 	if (hasProperty["off_time"] && getProperty("off_time").real > 0 && timeElapsed >= getProperty("off_time").real)
 	{
-		setProperty("voltage", 0);
+		complex Von = getProperty("on_voltage");
+		complex Voff = getProperty("off_voltage");
+
+		complex V = Voff;
+		if (timeElapsed < getProperty("off_time").real + getProperty("change_time").real)
+		{
+			V = Voff + (Von - Voff) * ((getProperty("off_time").real + getProperty("change_time").real) - timeElapsed) / getProperty("change_time").real;
+		}
+
+		setProperty("voltage", V);
+	}
+	else if (hasProperty["on_voltage"])
+	{
+		setProperty("voltage", getProperty("on_voltage"));
 	}
 	return;
 }
@@ -450,12 +463,21 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 			equations[0][id] = 1;
 		}
 
-		if (device->deviceType == 1 && !forced) //Resistor
+		if (device->deviceType == 1 && !forced && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE) //Resistor
 		{
 			complex coef = 1.0 / (device->getProperty("resistance"));
-
 			equations[0][id] += coef;
 			equations[0][otherNode->id] += -coef;
+		}
+		else if (device->deviceType == 1 && !forced) //Equate nodes (0-volt power supply)
+		{
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+
+			equations[index][id] = 1;
+			equations[index][otherNode->id] = -1;
+
+			otherNode->generateEquations(solver, equations, addedNodes, forced);
 		}
 
 		if (device->deviceType == 2) //Voltage Source (Make SuperNode)
@@ -494,7 +516,7 @@ void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equ
 		if (terminal->foundCurrent) { continue; }
 		terminal->foundCurrent = true;
 		Device* device = terminal->device;
-		if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > 0)
+		if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE)
 		{
 			complex current = (voltage - terminal->getOtherTerminal()->node->voltage) / device->getProperty("resistance");
 			addEmptyEquation(solver, equations);

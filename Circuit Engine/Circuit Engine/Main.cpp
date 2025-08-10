@@ -54,7 +54,7 @@ MVector heldPosition = MVector(2, 0, 0);
 StateHandler state;
 DeviceLibrary deviceLib;
 
-void createAndSolveLinearSystem(vector<Node*>& nodes, int generatorIndex, int _rows)
+void createAndSolveLinearSystem(vector<Node*>& nodes, int _rows)
 {
 	ComplexMatrix* solver = new ComplexMatrix(_rows, _rows + 1);
 
@@ -66,8 +66,13 @@ void createAndSolveLinearSystem(vector<Node*>& nodes, int generatorIndex, int _r
 		Node* node = nodes[index];
 		std::vector<complex*> equations;
 		bool forced = false;
+		node->equationGenerator(solver, equations, equationIDs, forced, 0);
 
-		node->equationGenerator(solver, equations, equationIDs, forced, generatorIndex);
+		bool currentForced = false;
+		std::vector<complex*> currentEquations;
+		node->equationGenerator(solver, currentEquations, equationIDs, currentForced, 1);
+
+		cout << "forced: " << forced << endl;
 
 		for (int i = 0; i < equations.size(); i++)
 		{
@@ -78,59 +83,45 @@ void createAndSolveLinearSystem(vector<Node*>& nodes, int generatorIndex, int _r
 			delete[] equations[i];
 		}
 
+		for (int i = 0; i < currentEquations.size(); i++)
+		{
+			if (equationsInSolver < solver->rows && solver->addLIRow(equationsInSolver, currentEquations[i]))
+			{
+				equationsInSolver++;
+			}
+			delete[] currentEquations[i];
+		}
 	}
 
 	ComplexMatrix* solution = solver->RREF();
 
-	if (generatorIndex == 0) {
-		for (int i = 0; i < solution->rows; i++)
-		{
-			int nonzeroes = 0;
-			int solutionIndex = 0;
 
-			for (int c = 0; c < solution->rows; c++)
+	for (int i = 0; i < solution->rows; i++)
+	{
+		int nonzeroes = 0;
+		int solutionIndex = 0;
+
+		for (int c = 0; c < solution->rows; c++)
+		{
+			if (abs(solution->get(i, c)) > ERROR_MARGIN)
 			{
-				if (abs(solution->get(i, c)) > ERROR_MARGIN)
-				{
-					nonzeroes++;
-				}
-				if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
-				{
-					solutionIndex = c;
-				}
+				nonzeroes++;
 			}
-			if (nonzeroes == 1)
+			if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
 			{
-				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
-				getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);
+				solutionIndex = c;
 			}
 		}
-	}
-	if (generatorIndex == 1) {
-		for (int i = 0; i < solution->rows; i++)
+		if (nonzeroes == 1)
 		{
-			int nonzeroes = 0;
-			int solutionIndex = 0;
-
-			for (int c = 0; c < solution->rows; c++)
-			{
-				if (abs(solution->get(i, c)) > ERROR_MARGIN)
-				{
-					nonzeroes++;
-				}
-				if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
-				{
-					solutionIndex = c;
-				}
-			}
-			if (nonzeroes == 1)
-			{
-				//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
-				getTerminalByID(solutionIndex)->current = solution->get(i, solution->cols - 1);
-			}
+			//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
+			if (solutionIndex < nodes.size()) { getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1); }
+			else { getTerminalByID(solutionIndex)->current = solution->get(i, solution->cols - 1); }
 		}
 	}
-
+	
+	solver->print();
+	solution->print();
 	delete solution;
 	delete solver;
 }
@@ -290,10 +281,7 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 	std::vector<Node*> nodes = getNodeList();
 	if (simulating) {
 		
-		createAndSolveLinearSystem(nodes, 0, nodes.size());
-		//calculate current
-		//set terminal IDs
-		int termIDs = 0;
+		int termIDs = nodes.size();
 		for (int d = 0; d < devices.size(); d++)
 		{
 			Device* device = devices[d];
@@ -306,7 +294,7 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 			}
 		}
 
-		createAndSolveLinearSystem(nodes, 1, termIDs);
+		createAndSolveLinearSystem(nodes, termIDs);
 
 		//run step updates
 

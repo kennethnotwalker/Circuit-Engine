@@ -123,6 +123,7 @@ void Node::render(SDL_Renderer* r)
 			
 	}
 	displayNumber(voltage.real, center, r);
+	displayNumber(id, center + MVector(2, 0, -30.0), r);
 }
 
 void displayNumber(double num, MVector center, SDL_Renderer* r)
@@ -444,7 +445,6 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 
 		if (device->deviceType == 0) //Ground
 		{
-			
 			resetEquation(solver, equations[0]);
 			forced = true;
 			equations[0][id] = 1;
@@ -474,7 +474,7 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 			{
 				equations[index][solver->cols - 1] = device->getProperty("voltage");
 			}
-			
+
 			otherNode->generateEquations(solver, equations, addedNodes, forced);
 		}
 	}
@@ -483,24 +483,27 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 
 void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced)
 {
-	if (std::find(addedNodes.begin(), addedNodes.end(), id) != addedNodes.end()) { return; }
-
-	addedNodes.push_back(id);
-	addEmptyEquation(solver, equations);
 
 	for (int otherIndex = 0; otherIndex < junctions.size(); otherIndex++)
 	{
 		Terminal* terminal = (Terminal*)junctions[otherIndex];
+
+		if (std::find(addedNodes.begin(), addedNodes.end(), terminal->id) != addedNodes.end()) { return; }
+
+		addedNodes.push_back(terminal->id);
+		addEmptyEquation(solver, equations);
+
 		if (terminal->foundCurrent) { continue; }
 		terminal->foundCurrent = true;
 		Device* device = terminal->device;
 		if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > 0)
 		{
-			complex current = (voltage - terminal->getOtherTerminal()->node->voltage) / device->getProperty("resistance");
+			complex coef = 1 / device->getProperty("resistance");
 			addEmptyEquation(solver, equations);
 			int index = equations.size() - 1;
 			equations[index][terminal->id] = 1;
-			equations[index][solver->cols - 1] = current;
+			equations[index][terminal->node->id] = -coef;
+			equations[index][terminal->getOtherTerminal()->node->id] = coef;
 		}
 		else if (device->terminals.size() == 2) //assume 0 resistance
 		{
@@ -509,21 +512,7 @@ void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equ
 			equations[index][terminal->id] = 1;
 			equations[index][terminal->getOtherTerminal()->id] = 1;
 		}
-		if (terminal->device->deviceType == 0)
-		{
-			vector<Node*> nodes;
-			for (int n = 0; n < nodes.size(); n++)
-			{
-				if (nodes[n]->isGrounded())
-				{
-					nodes[n]->generateCurrentEquations(solver, equations, addedNodes, forced);
-				}
-			}
-		}
-		else
-		{
-			equations[0][terminal->id] = 1;
-		}
+		equations[0][terminal->id] = 1;
 		
 
 		

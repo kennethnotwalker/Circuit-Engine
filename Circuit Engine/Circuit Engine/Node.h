@@ -54,8 +54,10 @@ class Node
 			{
 				case 0:
 					generateEquations(solver, equations, addedNodes, forced);
+					break;
 				case 1:
 					generateCurrentEquations(solver, equations, addedNodes, forced);
+					break;
 			}
 		}
 

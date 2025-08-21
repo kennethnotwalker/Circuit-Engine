@@ -12,6 +12,7 @@
 #include <numbers>
 #include "ImageLoader.h"
 #include "Constants.h"
+#include "Util.h"
 
 
 int GLOBAL_ID_COUNTER = 0;
@@ -36,6 +37,10 @@ Node::Node()
 	id = GLOBAL_ID_COUNTER;
 	GLOBAL_ID_COUNTER++;
 	nodeList.push_back(this);
+	for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+	{
+		voltageHistory.push_back({});
+	}
 }
 
 Node::~Node()
@@ -123,25 +128,18 @@ void Node::render(SDL_Renderer* r)
 			
 	}
 	displayNumber(voltage.real, center, r);
-	displayNumber(id, center + MVector(2, 0, -30.0), r);
+	displayInt(id, center + MVector(2, 0, -30.0), r);
 }
 
 void displayNumber(double num, MVector center, SDL_Renderer* r)
 {
-	std::string s_num = std::to_string(num);
-	int digits = 1 + log10(num);
-	if (digits < 1) { digits = 1; }
-	int decimals = 2;
-	int maxlen = digits + 1 + decimals;
-	if (num < 0)
-	{
-		maxlen += 1;
-	}
-	if (maxlen > s_num.size())
-	{
-		maxlen = s_num.size();
-	}
-	s_num = s_num.substr(0, maxlen);
+	std::string s_num = toENotation(num);
+	displayText(s_num, center, r);
+}
+
+void displayInt(int num, MVector center, SDL_Renderer* r)
+{
+	std::string s_num = to_string(num);
 	displayText(s_num, center, r);
 }
 
@@ -169,31 +167,33 @@ void Device::setOffsets()
 
 void Device::stepUpdate(double step)
 {
-	if (hasProperty["capacitance"] && getProperty("capacitance").real > 0)
-	{
-		complex dV = -terminals[0]->current / getProperty("capacitance");
-		complex V = getProperty("voltage") + dV*step;
+	//if (hasProperty["capacitance"] && getProperty("capacitance").real > 0)
+	//{
+	//	complex dV = -terminals[0]->current / getProperty("capacitance");
+	//	complex V = getProperty("voltage") + dV*step;
 
-		setProperty("voltage", V);
-	}
+	//	setProperty("voltage", V);
+	//}
 
-	if (hasProperty["inductance"] && getProperty("inductance").real > 0 && history["current"].size() > 3)
-	{
-		complex dI = (getProperty("current") - history["current"][history["current"].size() - 2]) / step;
-		complex V = -getProperty("inductance")*dI;
+	//if (hasProperty["inductance"] && getProperty("inductance").real > 0 && history["current"].size() > 3)
+	//{
+	//	complex dI = (getProperty("current") - history["current"][history["current"].size() - 2]) / step;
+	//	complex V = -getProperty("inductance")*dI;
 
-		complex I = getProperty("current");
-		if (abs(I) > 0) {
-			complex R = V / I;
+	//	complex I = getProperty("current");
+	//	if (abs(I) > 0) {
+	//		complex R = V / I;
 
-			setProperty("resistance", R);
-		}
-	}
+	//		setProperty("resistance", R);
+	//	}
+	//}
 
 	if (hasProperty["off_time"] && getProperty("off_time").real > 0 && timeElapsed >= getProperty("off_time").real)
 	{
-		complex Von = getProperty("on_voltage");
-		complex Voff = getProperty("off_voltage");
+		double f = getProperty("frequency").real;
+		double sinComp = cos(f * timeElapsed * 2 * PI);
+		complex Von = getProperty("on_voltage") * sinComp;
+		complex Voff = getProperty("off_voltage") * sinComp;
 
 		complex V = Voff;
 		if (timeElapsed < getProperty("off_time").real + getProperty("change_time").real)
@@ -205,7 +205,16 @@ void Device::stepUpdate(double step)
 	}
 	else if (hasProperty["on_voltage"])
 	{
-		setProperty("voltage", getProperty("on_voltage"));
+		double f = getProperty("frequency").real;
+		complex V1 = getProperty("on_voltage")*cos(f*timeElapsed * 2 * PI);
+		double t = timeElapsed / getProperty("change_time").real;
+		if (t > 1)
+		{
+			t = 1;
+		}
+		
+		complex V = V1 * t;
+		setProperty("voltage", V);
 	}
 	return;
 }
@@ -293,7 +302,7 @@ void Device::render(SDL_Renderer* r)
 		double _h = 20;
 		SDL_FRect termRect = { terminals[i]->getGlobalPosition()[0] - _w / 2, terminals[i]->getGlobalPosition()[1] - _h / 2, _w, _h };
 		SDL_RenderRect(r, &termRect);
-		//displayNumber(terminals[i]->id, terminals[i]->getGlobalPosition(), r);
+		displayInt(terminals[i]->id, terminals[i]->getGlobalPosition(), r);
 	}
 }
 
@@ -442,12 +451,60 @@ bool Node::isGrounded()
 	return false;
 }
 
+void setEquationCoefficient(complex* eq, int index, complex val, int derivative = 0)
+{
+	eq[index * (1 + SOLVER_DERIVATIVES) + derivative] = val;
+}
+
+void setLHSCoefficient(complex* eq, int cols, complex val)
+{
+	eq[cols - 1] = val;
+}
+
+complex getEquationCoefficient(complex* eq, int index, int derivative = 0)
+{
+	return eq[index * (1 + SOLVER_DERIVATIVES) + derivative];
+}
+
+void addEquationCoefficient(complex* eq, int index, complex val, int derivative = 0)
+{
+	complex old = getEquationCoefficient(eq, index, derivative);
+	setEquationCoefficient(eq, index, old + val, derivative);
+}
+
+void printEquation(complex* eq, ComplexMatrix* solver)
+{
+	int size = solver->cols;
+	for (int i = 0; i < size; i++)
+	{
+		cout << eq[i] << " ";
+	}
+	cout << "> " << solver->linearCombinationExists(eq);
+	cout << endl;
+}
+
+
 void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations, vector<int>& addedNodes, bool& forced)
 {
 	if (std::find(addedNodes.begin(), addedNodes.end(), id) != addedNodes.end()) { return; }
 
 	addedNodes.push_back(id);
 	addEmptyEquation(solver, equations);
+
+	//add derivative
+
+	cout << "derivative: " << endl;
+
+	for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+	{
+		addEmptyEquation(solver, equations);
+		int index = equations.size() - 1;
+		setEquationCoefficient(equations[index], id, -1, d);
+		setEquationCoefficient(equations[index], id, 1.0/TIME_STEP, d+1);
+		setLHSCoefficient(equations[index], solver->cols, getLastVoltage(d));
+		printEquation(equations[equations.size() - 1], solver);
+	}
+	
 
 	for (int otherIndex = 0; otherIndex < junctions.size(); otherIndex++)
 	{
@@ -456,45 +513,63 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 		Device* device = terminal->device;
 		Node* otherNode = terminal->getOtherTerminal()->node;
 
+		
+
+
 		if (device->deviceType == 0) //Ground
 		{
 			resetEquation(solver, equations[0]);
 			forced = true;
-			equations[0][id] = 1;
+			setEquationCoefficient(equations[0], id, 1);
 		}
 
-		if (device->deviceType == 1 && !forced && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE) //Resistor
+		if (device->hasProperty["inductance"])
+		{
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+
+			complex L = device->getProperty("inductance");
+			addEquationCoefficient(equations[index], id, 1);
+			addEquationCoefficient(equations[index], otherNode->id, -1, 0);
+			addEquationCoefficient(equations[index], terminal->id, -L, 1);
+		}
+		else if (device->deviceType == 1 && !forced && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE) //Resistor
 		{
 			complex coef = 1.0 / (device->getProperty("resistance"));
-			equations[0][id] += coef;
-			equations[0][otherNode->id] += -coef;
+
+			addEquationCoefficient(equations[0], id, coef);
+			addEquationCoefficient(equations[0], otherNode->id, -coef);
+		}
+		else if (device->hasProperty["capacitance"] && !forced)
+		{
+			addEquationCoefficient(equations[0], terminal->id, 1);
 		}
 		else if (device->deviceType == 1 && !forced) //Equate nodes (0-volt power supply)
 		{
 			addEmptyEquation(solver, equations);
 			int index = equations.size() - 1;
 
-			equations[index][id] = 1;
-			equations[index][otherNode->id] = -1;
+			setEquationCoefficient(equations[index], id, 1);
+			setEquationCoefficient(equations[index], otherNode->id, -1);
 
 			otherNode->generateEquations(solver, equations, addedNodes, forced);
 		}
 
-		if (device->deviceType == 2) //Voltage Source (Make SuperNode)
+		if (device->deviceType == 2 && !device->hasProperty["capacitance"]) //Voltage Source (Make SuperNode)
 		{
 			addEmptyEquation(solver, equations);
 			int index = equations.size() - 1;
 
-			equations[index][id] = 1;
-			equations[index][otherNode->id] = -1;
+			setEquationCoefficient(equations[index], id, 1);
+			setEquationCoefficient(equations[index], otherNode->id, -1);
 
 			if (terminal == device->terminals[0]) //T0 - T1 = - V or //T1 - T0 = V
 			{
-				equations[index][solver->cols - 1] = -device->getProperty("voltage");
+				setLHSCoefficient(equations[index], solver->cols, -device->getProperty("voltage"));
 			}
 			else
 			{
-				equations[index][solver->cols - 1] = device->getProperty("voltage");
+				setLHSCoefficient(equations[index], solver->cols, device->getProperty("voltage"));
 			}
 
 			otherNode->generateEquations(solver, equations, addedNodes, forced);
@@ -515,31 +590,81 @@ void Node::generateCurrentEquations(ComplexMatrix* solver, vector<complex*>& equ
 		addedNodes.push_back(terminal->id);
 		addEmptyEquation(solver, equations);
 
+		for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+		{
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+			setEquationCoefficient(equations[index], terminal->id, -1, d);
+			setEquationCoefficient(equations[index], terminal->id, 1.0/TIME_STEP, d + 1);
+			setLHSCoefficient(equations[index], solver->cols, -terminal->getLastCurrent(d));
+		}
+
+
+		
+
 		if (terminal->foundCurrent) { continue; }
 		terminal->foundCurrent = true;
 		Device* device = terminal->device;
-		if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE)
+
+		if (device->hasProperty["capacitance"])
+		{
+			addEmptyEquation(solver, equations);
+			int index = equations.size() - 1;
+
+			complex C = device->getProperty("capacitance");
+
+			addEquationCoefficient(equations[index], terminal->id, -1, 0);
+			addEquationCoefficient(equations[index], terminal->node->id, -C, 1);
+			addEquationCoefficient(equations[index], terminal->getOtherTerminal()->node->id, C, 1);
+		}
+		else if (device->hasProperty["resistance"] && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE)
 		{
 			complex coef = 1 / device->getProperty("resistance");
 			addEmptyEquation(solver, equations);
 			int index = equations.size() - 1;
-			equations[index][terminal->id] = 1;
-			equations[index][terminal->node->id] = -coef;
-			equations[index][terminal->getOtherTerminal()->node->id] = coef;
+
+			setEquationCoefficient(equations[index], terminal->id, 1);
+			setEquationCoefficient(equations[index], terminal->node->id, -coef);
+			setEquationCoefficient(equations[index], terminal->getOtherTerminal()->node->id, coef);
 		}
-		else if (device->terminals.size() == 2) //assume 0 resistance
+		
+		if (device->terminals.size() == 2) //2-terminal device: assume 0 resistance
 		{
 			addEmptyEquation(solver, equations);
 			int index = equations.size() - 1;
-			equations[index][terminal->id] = 1;
-			equations[index][terminal->getOtherTerminal()->id] = 1;
+			setEquationCoefficient(equations[index], terminal->id, 1);
+			setEquationCoefficient(equations[index], terminal->getOtherTerminal()->id, 1);
 		}
-		equations[0][terminal->id] = 1;
+		setEquationCoefficient(equations[0], terminal->id, 1);
 		
 
 		
 	}
 	return;
+}
+
+complex Terminal::getLastCurrent(int derivativeLevel)
+{
+	if (currentHistory[derivativeLevel].size() < 2)
+	{
+		return 0;
+	}
+	else
+	{
+		return currentHistory[derivativeLevel][currentHistory[derivativeLevel].size() - 2];
+	}
+}
+
+complex Node::getLastVoltage(int derivativeLevel)
+{
+	if (voltageHistory[derivativeLevel].size() < 2)
+	{
+		return 0;
+	}
+	else
+	{
+		return voltageHistory[derivativeLevel][voltageHistory[derivativeLevel].size() - 2];
+	}
 }
 
 void elapseTime(double t)

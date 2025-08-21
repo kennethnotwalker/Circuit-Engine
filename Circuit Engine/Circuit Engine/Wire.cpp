@@ -44,20 +44,6 @@ Wire::Wire(MVector _from, MVector _to)
 		}
 	}
 
-	if (fromJunc == nullptr)
-	{
-		fromJunc = new Junction(from);
-		fromJunc->node = new Node();
-		fromJunc->node->junctions.push_back(fromJunc);
-	}
-
-	if (toJunc == nullptr)
-	{
-		toJunc = new Junction(to);
-		toJunc->node = new Node();
-		toJunc->node->junctions.push_back(toJunc);
-	}
-
 	if (fromJunc != nullptr && toJunc != nullptr && fromJunc != toJunc)
 	{
 		connectJunction(fromJunc, toJunc);

@@ -10,6 +10,7 @@
 #include <functional>
 #include "ImageLoader.h"
 #include "ComplexMatrix.h"
+#include "Constants.h"
 
 class Node;
 class Terminal;
@@ -34,6 +35,7 @@ class Node
 		double x, y;
 		int id = 0;
 		complex voltage = 0;
+		vector<vector<complex>> voltageHistory;
 		bool calculated = false;
 		bool forced = false;
 		std::vector<Junction*> junctions;
@@ -62,6 +64,7 @@ class Node
 		}
 
 		void render(SDL_Renderer* r);
+		complex getLastVoltage(int derivativeLevel);
 };
 
 
@@ -149,6 +152,7 @@ public:
 	bool foundCurrent = false;
 	int id = 0;
 	complex current; //current (A) going into terminal
+	vector<vector<complex>> currentHistory;
 	
 
 	Terminal(Device* _device, Node* _node, int _termIndex, MVector _pos) : Junction(_pos)
@@ -158,11 +162,16 @@ public:
 		node = _node;
 		node->junctions.push_back(this);
 		terminalIndex = _termIndex;
+		for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+		{
+			currentHistory.push_back({});
+		}
 	}
 
 	Terminal* getOtherTerminal();
 	MVector getGlobalPosition() override;
 	complex getCurrent(); //calculates current going in
+	complex getLastCurrent(int derivativeLevel);
 
 };
 
@@ -182,6 +191,8 @@ MVector nodeSnap(MVector in);
 
 void displayText(std::string text, MVector center, SDL_Renderer* r);
 void displayNumber(double num, MVector center, SDL_Renderer* r);
+void displayInt(int num, MVector center, SDL_Renderer* r);
+
 void calculateTerminalCurrents(vector<Node*>& nodes);
 void elapseTime(double t);
 double getElapsedTime();

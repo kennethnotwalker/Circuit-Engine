@@ -63,7 +63,15 @@ void ComplexMatrix::print()
 	{
 		for (int c = 0; c < cols; c++)
 		{
-			cout << data[r][c] << " ";
+			if (abs(data[r][c]) > ERROR_MARGIN)
+			{
+				cout << data[r][c] << " ";
+			}
+			else
+			{
+				cout << 0 << " ";
+			}
+			
 		}
 		cout << endl;
 	}
@@ -161,8 +169,8 @@ ComplexMatrix* ComplexMatrix::RREF()
 	for (int sourceRow = 0; sourceRow < rows; sourceRow++) //go through columns bounded by number of rows
 	{
 		int sourceCol = 0;
-		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < 10e-10) { sourceCol++; }
-		if (abs(m->get(sourceRow, sourceCol)) < 10e-10) { continue; }
+		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < ERROR_MARGIN) { sourceCol++; }
+		if (abs(m->get(sourceRow, sourceCol)) < ERROR_MARGIN) { continue; }
 		m->linearRowScale(sourceRow, 1.0 / m->get(sourceRow, sourceCol));
 		for (int r = 0; r < rows; r++)
 		{

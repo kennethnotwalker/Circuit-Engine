@@ -328,8 +328,8 @@ Matrix* Matrix::RREF()
 	for (int sourceRow = 0; sourceRow < rows; sourceRow++) //go through columns bounded by number of rows
 	{
 		int sourceCol = 0;
-		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < 10e-10) { sourceCol++; }
-		if (abs(m->get(sourceRow, sourceCol)) < 10e-10) { continue; }
+		while (sourceCol < rows && abs(m->get(sourceRow, sourceCol)) < ERROR_MARGIN) { sourceCol++; }
+		if (abs(m->get(sourceRow, sourceCol)) < ERROR_MARGIN) { continue; }
 		m->linearRowScale(sourceRow, 1.0 / m->get(sourceRow, sourceCol));
 		for (int r = 0; r < rows; r++)
 		{

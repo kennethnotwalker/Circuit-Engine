@@ -95,11 +95,14 @@ void createAndSolveLinearSystem(vector<Node*>& nodes, int _rows)
 
 	ComplexMatrix* solution = solver->RREF();
 
+	cout << "method" << endl;
+	solver->print();
+	solution->print();
 
 	for (int i = 0; i < solution->rows; i++)
 	{
 		int nonzeroes = 0;
-		int solutionIndex = 0;
+		int solutionIndex = -1;
 
 		for (int c = 0; c < solution->rows; c++)
 		{
@@ -107,22 +110,54 @@ void createAndSolveLinearSystem(vector<Node*>& nodes, int _rows)
 			{
 				nonzeroes++;
 			}
-			if (abs(solution->get(i, c) - 1) < ERROR_MARGIN)
+			if (abs(solution->get(i, c) - 1) < ERROR_MARGIN && c % (1 + SOLVER_DERIVATIVES) == 0)
 			{
-				solutionIndex = c;
+				solutionIndex = c/(1+SOLVER_DERIVATIVES);
 			}
 		}
-		if (nonzeroes == 1)
+		if (nonzeroes == 1 && solutionIndex >= 0)
 		{
 			//cout << "Row " << i << ": Setting Node " << solutionIndex << " to " << solution->get(i, solution->cols - 1) << endl;
-			if (solutionIndex < nodes.size()) { getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1); }
+			if (solutionIndex < nodes.size()) { getNodeByID(solutionIndex)->voltage = solution->get(i, solution->cols - 1);  }
 			else { getTerminalByID(solutionIndex)->current = solution->get(i, solution->cols - 1); }
 		}
 	}
 
-	cout << "method" << endl;
-	solver->print();
-	solution->print();
+	//set voltage and current histories
+	for (int objectIndex = 0; objectIndex < _rows/(1 + SOLVER_DERIVATIVES); objectIndex++)
+	{
+		if (objectIndex < nodes.size()) { 
+			Node* node = getNodeByID(objectIndex);
+			for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+			{
+				if (d == 0)
+				{
+					node->voltageHistory[d].push_back(node->voltage);
+				}
+				else
+				{
+					node->voltageHistory[d].push_back(node->getLastVoltage(d-1));
+				}
+			}
+			
+			
+		}
+		else { 
+			Terminal* terminal = getTerminalByID(objectIndex);
+			for (int d = 0; d < SOLVER_DERIVATIVES; d++)
+			{
+				if (d == 0)
+				{
+					terminal->currentHistory[d].push_back(terminal->current);
+				}
+				else
+				{
+					terminal->currentHistory[d].push_back(terminal->getLastCurrent(d - 1));
+				}
+			}
+		}
+	}
+
 
 	delete solution;
 	delete solver;
@@ -135,7 +170,7 @@ void placeAsset(DevicePreset& preset, MVector pos, double rot)
 	for (int i = 0; i < preset.properties.size(); i++)
 	{
 		double defaultValue = 1;
-		if (preset.properties[i] == "voltage" || preset.properties[i] == "current" || preset.properties[i] == "off_time" || preset.properties[i] == "off_voltage")
+		if (preset.properties[i] == "voltage" || preset.properties[i] == "current" || preset.properties[i] == "off_time" || preset.properties[i] == "off_voltage" || preset.properties[i] == "frequency")
 		{
 			defaultValue = 0;
 		}
@@ -296,7 +331,7 @@ void process(bool& running, SDL_Renderer* r, ImGuiIO& io)
 			}
 		}
 
-		createAndSolveLinearSystem(nodes, termIDs);
+		createAndSolveLinearSystem(nodes, termIDs*(1 + SOLVER_DERIVATIVES));
 
 		//run step updates
 

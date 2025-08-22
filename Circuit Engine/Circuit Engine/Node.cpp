@@ -532,8 +532,10 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 			addEquationCoefficient(equations[index], id, 1);
 			addEquationCoefficient(equations[index], otherNode->id, -1, 0);
 			addEquationCoefficient(equations[index], terminal->id, -L, 1);
+			//add to KCL equation
+			if (!forced) { addEquationCoefficient(equations[0], terminal->id, 1); }
 		}
-		else if (device->deviceType == 1 && !forced && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE) //Resistor
+		else if (device->deviceType == 1 && !forced && abs(device->getProperty("resistance")) > MINIMUM_RESISTANCE) //Resistor (add current going **out of** node)
 		{
 			complex coef = 1.0 / (device->getProperty("resistance"));
 
@@ -542,6 +544,7 @@ void Node::generateEquations(ComplexMatrix* solver, vector<complex*>& equations,
 		}
 		else if (device->hasProperty["capacitance"] && !forced)
 		{
+			//add to KCL equation
 			addEquationCoefficient(equations[0], terminal->id, 1);
 		}
 		else if (device->deviceType == 1 && !forced) //Equate nodes (0-volt power supply)
